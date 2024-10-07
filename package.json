@@ -1,21 +1,21 @@
 {
-  "name": "typescript-action",
-  "description": "GitHub Actions TypeScript template",
+  "name": "gradle-dependency-diff-action",
+  "description": "Report the Gradle dependency differences caused by the Pull Request",
   "version": "0.0.0",
-  "author": "",
+  "author": "be-hase",
   "private": true,
-  "homepage": "https://github.com/actions/typescript-action",
+  "homepage": "https://github.com/be-hase/gradle-dependency-diff-action",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/actions/typescript-action.git"
+    "url": "git+https://github.com/be-hase/gradle-dependency-diff-action.git"
   },
   "bugs": {
-    "url": "https://github.com/actions/typescript-action/issues"
+    "url": "https://github.com/be-hase/gradle-dependency-diff-action/issues"
   },
   "keywords": [
     "actions",
-    "node",
-    "setup"
+    "java",
+    "gradle"
   ],
   "exports": {
     ".": "./dist/index.js"
