@@ -1,16 +1,55 @@
 name: 'gradle-dependency-diff-action'
-description: 'Report the Gradle dependency differences caused by the Pull Request'
+description:
+  'Report the Gradle dependency differences caused by the Pull Request'
 author: 'be-hase'
 
 branding:
   icon: 'heart'
   color: 'red'
 
-#inputs:
-#  milliseconds:
-#    description: 'Your input description here'
-#    required: true
-#    default: '1000'
+inputs:
+  tool-version:
+    description:
+      'Version of
+      dependency-tree-diff-version(https://github.com/JakeWharton/dependency-tree-diff).'
+    required: false
+    default: '1.2.1'
+  include-project-regex:
+    description: 'Filter by projects that match this regular expression.'
+    required: false
+    default: ''
+  exclude-project-regex:
+    description: 'Filter by projects that do not match this regular expression.'
+    required: false
+    default: ''
+  include-root-project:
+    description: 'Whether to target the root project or not.'
+    required: false
+    default: 'true'
+  configurations:
+    description: 'Configuration of dependencies (CSV).'
+    required: false
+    default: 'runtimeClasspath'
+  token:
+    description: 'GitHub token.'
+    required: false
+    default: ${{ github.token }}
+  post-pr-comment:
+    description: 'Post a comment when there are dependency differences.'
+    required: false
+    default: 'true'
+  update-pr-body:
+    description: 'Update the checks URL in the PR body'
+    required: false
+    default: 'false'
+  assign-label:
+    description: 'Assign a label when there are dependency differences.'
+    required: false
+    default: 'true'
+  label-name:
+    description: 'The label name to use when assigning a label.'
+    required: false
+    default: 'dependencies-change'
 
 runs:
   using: node20
