@@ -1,16 +1,33 @@
 name: 'gradle-dependency-diff-action'
-description: 'Report the Gradle dependency differences caused by the Pull Request'
+description:
+  'Report the Gradle dependency differences caused by the Pull Request'
 author: 'be-hase'
 
 branding:
   icon: 'heart'
   color: 'red'
 
-#inputs:
-#  milliseconds:
-#    description: 'Your input description here'
-#    required: true
-#    default: '1000'
+inputs:
+  include-project-regex:
+    description: 'Filter by projects that match this regular expression.'
+    required: false
+    default: ''
+  exclude-project-regex:
+    description: 'Filter by projects that do not match this regular expression.'
+    required: false
+    default: ''
+  include-root-project:
+    description: 'Whether to target the root project or not.'
+    required: false
+    default: 'true'
+  configurations:
+    description: 'dependencies configuration'
+    required: false
+    default: 'runtimeClasspath'
+  token:
+    description: 'GitHub token.'
+    required: false
+    default: ${{ github.token }}
 
 runs:
   using: node20
