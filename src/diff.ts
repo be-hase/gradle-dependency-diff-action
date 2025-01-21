@@ -1,6 +1,6 @@
 import path from 'path'
 import fs from 'fs'
-import { DiffResult, TempDirs } from './types'
+import { DiffResult, TempDirs } from './types.js'
 import * as exec from '@actions/exec'
 import * as glob from '@actions/glob'
 

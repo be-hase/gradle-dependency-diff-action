@@ -1,5 +1,6 @@
 import { getChecksOutput } from '../src/reporter'
 import { DiffResult } from '../src/types'
+import { jest } from '@jest/globals'
 
 describe('reporter.ts', () => {
   beforeEach(() => {

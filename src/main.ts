@@ -4,9 +4,9 @@ import * as path from 'path'
 import * as io from '@actions/io'
 import * as exec from '@actions/exec'
 
-import * as gradle from './gradle'
-import * as utils from './utils'
-import * as diff from './diff'
+import * as gradle from './gradle.js'
+import * as utils from './utils.js'
+import * as diff from './diff.js'
 import {
   BASE_DEPENDENCIES_DIR_NAME,
   BASE_REPO_DIR_NAME,
@@ -14,8 +14,8 @@ import {
   GradleOptions,
   Inputs,
   TempDirs
-} from './types'
-import * as reporter from './reporter'
+} from './types.js'
+import * as reporter from './reporter.js'
 
 /**
  * The main function for the action.

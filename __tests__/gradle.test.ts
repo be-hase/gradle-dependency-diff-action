@@ -4,6 +4,7 @@ import {
   getProjectFromTask,
   parseGradleProjects
 } from '../src/gradle'
+import { jest } from '@jest/globals'
 
 describe('gradle.ts', () => {
   beforeEach(() => {

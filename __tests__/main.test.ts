@@ -1,5 +1,5 @@
 import { getGitUrl } from '../src/main'
-import { expect } from '@jest/globals'
+import { expect, jest } from '@jest/globals'
 
 describe('main.ts', () => {
   beforeEach(() => {
