@@ -1,4 +1,4 @@
-import { GitHub } from '@actions/github/lib/utils'
+import { GitHub } from '@actions/github/lib/utils.js'
 import * as github from '@actions/github'
 import { DiffResult } from './types.js'
 
@@ -9,7 +9,6 @@ export async function reportAsChecks(
   octokit: InstanceType<typeof GitHub>,
   diffResults: DiffResult[]
 ): Promise<string> {
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const sha = github.context.payload.pull_request!.head.sha
   const conclusion = diffResults.length == 0 ? 'success' : 'neutral'
   const output = getChecksOutput(diffResults)
@@ -19,7 +18,7 @@ export async function reportAsChecks(
     ref: sha
   })
   const checksExists = checksResult.data.check_runs.find(
-    check => check.name === CHECKS_NAME
+    (check) => check.name === CHECKS_NAME
   )
 
   if (checksExists) {
@@ -29,7 +28,6 @@ export async function reportAsChecks(
       conclusion: conclusion,
       output: output
     })
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     return checksExists.html_url!
   } else {
     const result = await octokit.rest.checks.create({
@@ -39,7 +37,6 @@ export async function reportAsChecks(
       conclusion: conclusion,
       output: output
     })
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     return result.data.html_url!
   }
 }
@@ -66,7 +63,6 @@ function groupByProject(diffResults: DiffResult[]): Map<string, DiffResult[]> {
       acc.set(key, [])
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     acc.get(key)!.push(item)
 
     return acc
@@ -97,7 +93,6 @@ function getCheckOutputText(diffResultsMap: Map<string, DiffResult[]>): string {
   let text = ''
   for (const project of projects) {
     text += `### ${project}\n`
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     for (const diffResult of diffResultsMap.get(project)!) {
       text += `#### ${diffResult.configuration}\n`
       text += '```diff\n'
@@ -155,7 +150,7 @@ export async function findCommentByTag(
     issue_number: github.context.issue.number,
     per_page: 100
   })
-  const comment = comments.find(c => c?.body?.includes(tag))
+  const comment = comments.find((c) => c?.body?.includes(tag))
   return comment ? comment.id : -1
 }
 
@@ -210,7 +205,7 @@ export async function reportAsLabel(
     issue_number: github.context.issue.number,
     per_page: 100
   })
-  const exists = !!labels.find(it => it.name === labelName)
+  const exists = !!labels.find((it) => it.name === labelName)
 
   if (hasDiff) {
     if (!exists) {

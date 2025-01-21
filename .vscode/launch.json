@@ -7,17 +7,9 @@
       "request": "launch",
       "runtimeExecutable": "npx",
       "cwd": "${workspaceRoot}",
-      "args": [
-        "local-action",
-        ".",
-        "src/main.ts",
-        ".env"
-      ],
+      "args": ["local-action", ".", "src/main.ts", ".env"],
       "console": "integratedTerminal",
-      "skipFiles": [
-        "<node_internals>/**",
-        "node_modules/**"
-      ]
+      "skipFiles": ["<node_internals>/**", "node_modules/**"]
     }
   ]
 }
