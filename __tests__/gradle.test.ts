@@ -28,73 +28,73 @@ Root project 'root'
 |    +--- Project ':fuga:dog' - hoge's
 |    +--- Project ':fuga:cat'
 `
-      const actual = parseGradleProjects(text)
-      expect(actual).toEqual([':hoge', ':fuga', ':fuga:dog', ':fuga:cat'])
+      const result = parseGradleProjects(text)
+      expect(result).toEqual([':hoge', ':fuga', ':fuga:dog', ':fuga:cat'])
     })
     it('empty', () => {
-      const actual = parseGradleProjects('')
-      expect(actual).toEqual([])
+      const result = parseGradleProjects('')
+      expect(result).toEqual([])
     })
   })
 
   describe('filterGradleProjects', () => {
     it('includeProjectRegex', () => {
-      const actual = filterGradleProjects(
+      const result = filterGradleProjects(
         [':hoge', ':fuga', ':fuga:dog', ':fuga:cat'],
         'fuga',
         ''
       )
-      expect(actual).toEqual([':fuga', ':fuga:dog', ':fuga:cat'])
+      expect(result).toEqual([':fuga', ':fuga:dog', ':fuga:cat'])
     })
     it('excludeProjectRegex', () => {
-      const actual = filterGradleProjects(
+      const result = filterGradleProjects(
         [':hoge', ':fuga', ':fuga:dog', ':fuga:cat'],
         '',
         'fuga'
       )
-      expect(actual).toEqual([':hoge'])
+      expect(result).toEqual([':hoge'])
     })
     it('both includeProjectRegex and excludeProjectRegex', () => {
-      const actual = filterGradleProjects(
+      const result = filterGradleProjects(
         [':hoge', ':fuga', ':fuga:dog', ':fuga:cat'],
         'fuga',
         'cat'
       )
-      expect(actual).toEqual([':fuga', ':fuga:dog'])
+      expect(result).toEqual([':fuga', ':fuga:dog'])
     })
     it('no filter', () => {
-      const actual = filterGradleProjects(
+      const result = filterGradleProjects(
         [':hoge', ':fuga', ':fuga:dog', ':fuga:cat'],
         '',
         ''
       )
-      expect(actual).toEqual([':hoge', ':fuga', ':fuga:dog', ':fuga:cat'])
+      expect(result).toEqual([':hoge', ':fuga', ':fuga:dog', ':fuga:cat'])
     })
   })
 
   describe('getDependenciesTasks', () => {
     it('includeRootProject true', () => {
-      const actual = getDependenciesTasks([':hoge', ':fuga'], true)
-      expect(actual).toEqual([
+      const result = getDependenciesTasks([':hoge', ':fuga'], true)
+      expect(result).toEqual([
         'dependencies',
         ':hoge:dependencies',
         ':fuga:dependencies'
       ])
     })
     it('includeRootProject false', () => {
-      const actual = getDependenciesTasks([':hoge', ':fuga'], false)
-      expect(actual).toEqual([':hoge:dependencies', ':fuga:dependencies'])
+      const result = getDependenciesTasks([':hoge', ':fuga'], false)
+      expect(result).toEqual([':hoge:dependencies', ':fuga:dependencies'])
     })
   })
 
   describe('getProjectFromTask', () => {
     it('root', () => {
-      const actual = getProjectFromTask('dependencies')
-      expect(actual).toEqual('root')
+      const result = getProjectFromTask('dependencies')
+      expect(result).toEqual('root')
     })
     it('non root', () => {
-      const actual = getProjectFromTask(':hoge:dependencies')
-      expect(actual).toEqual(':hoge')
+      const result = getProjectFromTask(':hoge:dependencies')
+      expect(result).toEqual(':hoge')
     })
   })
 })
