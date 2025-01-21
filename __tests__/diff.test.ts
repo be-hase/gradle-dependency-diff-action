@@ -4,6 +4,7 @@ import {
   getProjectFromFilePath
 } from '../src/diff'
 import path from 'path'
+import { jest } from '@jest/globals'
 
 describe('diff.ts', () => {
   beforeEach(() => {
