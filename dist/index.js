@@ -33832,6 +33832,9 @@ var globExports = requireGlob();
 
 async function downloadJar(version, tempDir) {
     const res = await fetch(`https://github.com/JakeWharton/dependency-tree-diff/releases/download/${version}/dependency-tree-diff.jar`);
+    if (!res.ok) {
+        throw new Error('Failed to download dependency-tree-diff.jar');
+    }
     const arrayBuffer = await res.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     const jarPath = path__default.join(tempDir, 'dependency-tree-diff.jar');
