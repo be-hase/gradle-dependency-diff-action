@@ -1,7 +1,7 @@
-// From https://github.com/actions/toolkit/blob/c18a7d2f7347ca2fef6a2e455c6842611eb5f5d6/packages/cache/src/internal/cacheUtils.ts
 import * as path from 'node:path'
 import * as io from '@actions/io'
 
+// From https://github.com/actions/toolkit/blob/c18a7d2f7347ca2fef6a2e455c6842611eb5f5d6/packages/cache/src/internal/cacheUtils.ts
 export async function createTempDirectory(): Promise<string> {
   const IS_WINDOWS = process.platform === 'win32'
 
