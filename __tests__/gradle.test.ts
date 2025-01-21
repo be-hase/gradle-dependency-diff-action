@@ -1,14 +1,34 @@
 import {
+  execGradleProjects,
   filterGradleProjects,
   getDependenciesTasks,
   getProjectFromTask,
   parseGradleProjects
 } from '../src/gradle'
 import { jest } from '@jest/globals'
+import * as exec from '@actions/exec'
 
 describe('gradle.ts', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+  })
+
+  describe('execGradleProjects', () => {
+    const getExecOutput = jest.spyOn(exec, 'getExecOutput')
+
+    it('execGradleProjects', async () => {
+      getExecOutput.mockResolvedValueOnce({
+        stdout: 'stdout'
+      } as exec.ExecOutput)
+
+      const result = await execGradleProjects('cwd')
+
+      expect(result).toEqual('stdout')
+      expect(getExecOutput).toHaveBeenCalledWith('./gradlew', ['projects'], {
+        cwd: 'cwd',
+        silent: true
+      })
+    })
   })
 
   describe('parseGradleProjects', () => {

@@ -40,6 +40,7 @@ export async function calculateDiff(
   return results
 }
 
+// export for testing
 export function getOldFilePath(
   filePath: string,
   baseDependenciesDir: string
@@ -75,10 +76,12 @@ async function execDiff(
   return
 }
 
+// export for testing
 export function getProjectFromFilePath(filePath: string): string {
   return path.basename(path.dirname(filePath))
 }
 
+// export for testing
 export function getConfigurationFromFilePath(filePath: string): string {
   return path.basename(filePath).replace(/\.txt$/, '')
 }

@@ -39,6 +39,7 @@ export async function execGradleProjects(cwd?: string): Promise<string> {
   return output.stdout
 }
 
+// export for testing
 export function parseGradleProjects(projectsOutput: string): string[] {
   const regex = /Project '(\S+)'/g
   const matches: string[] = []
@@ -49,6 +50,7 @@ export function parseGradleProjects(projectsOutput: string): string[] {
   return matches
 }
 
+// export for testing
 export function filterGradleProjects(
   projects: string[],
   includeProjectRegex: string,
@@ -66,6 +68,7 @@ export function filterGradleProjects(
   return result
 }
 
+// export for testing
 export function getDependenciesTasks(
   projects: string[],
   includeRootProject: boolean
@@ -77,6 +80,7 @@ export function getDependenciesTasks(
   return tasks
 }
 
+// export for testing
 export async function execDependenciesTask(
   task: string,
   configurations: string[],
@@ -105,6 +109,7 @@ export async function execDependenciesTask(
   }
 }
 
+// export for testing
 export function getProjectFromTask(task: string): string {
   if (task === 'dependencies') {
     return 'root'
