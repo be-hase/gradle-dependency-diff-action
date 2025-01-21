@@ -3,7 +3,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as io from '@actions/io'
 import * as core from '@actions/core'
-import { GradleOptions } from './types'
+import { GradleOptions } from './types.js'
 
 export async function generateDependenciesFiles(
   gradleOptions: GradleOptions,
@@ -26,7 +26,7 @@ export async function generateDependenciesFiles(
   for (const task of tasks) {
     const configurations = gradleOptions.configurations
       .split(',')
-      .map(it => it.trim())
+      .map((it) => it.trim())
     await execDependenciesTask(task, configurations, outDir, cwd)
   }
 }
@@ -57,11 +57,11 @@ export function filterGradleProjects(
   let result: string[] = projects
   if (includeProjectRegex) {
     const regex = new RegExp(includeProjectRegex)
-    result = result.filter(it => it.match(regex))
+    result = result.filter((it) => it.match(regex))
   }
   if (excludeProjectRegex) {
     const regex = new RegExp(excludeProjectRegex)
-    result = result.filter(it => !it.match(regex))
+    result = result.filter((it) => !it.match(regex))
   }
   return result
 }
@@ -70,7 +70,7 @@ export function getDependenciesTasks(
   projects: string[],
   includeRootProject: boolean
 ): string[] {
-  const tasks = projects.map(it => `${it}:dependencies`)
+  const tasks = projects.map((it) => `${it}:dependencies`)
   if (includeRootProject) {
     return ['dependencies', ...tasks]
   }

@@ -1,6 +1,6 @@
 import { GitHub } from '@actions/github/lib/utils'
 import * as github from '@actions/github'
-import { DiffResult } from './types'
+import { DiffResult } from './types.js'
 
 const CHECKS_NAME = 'Report of gradle-dependency-diff-action'
 const TAG = '<!-- gradle-dependency-diff-action -->'
