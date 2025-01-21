@@ -31250,6 +31250,7 @@ async function execGradleProjects(cwd) {
     });
     return output.stdout;
 }
+// export for testing
 function parseGradleProjects(projectsOutput) {
     const regex = /Project '(\S+)'/g;
     const matches = [];
@@ -31259,6 +31260,7 @@ function parseGradleProjects(projectsOutput) {
     }
     return matches;
 }
+// export for testing
 function filterGradleProjects(projects, includeProjectRegex, excludeProjectRegex) {
     let result = projects;
     if (includeProjectRegex) {
@@ -31271,6 +31273,7 @@ function filterGradleProjects(projects, includeProjectRegex, excludeProjectRegex
     }
     return result;
 }
+// export for testing
 function getDependenciesTasks(projects, includeRootProject) {
     const tasks = projects.map((it) => `${it}:dependencies`);
     if (includeRootProject) {
@@ -31278,6 +31281,7 @@ function getDependenciesTasks(projects, includeRootProject) {
     }
     return tasks;
 }
+// export for testing
 async function execDependenciesTask(task, configurations, outDir, cwd) {
     const project = getProjectFromTask(task);
     await ioExports.mkdirP(path.join(outDir, project));
@@ -31290,6 +31294,7 @@ async function execDependenciesTask(task, configurations, outDir, cwd) {
         fs.writeFileSync(path.join(outDir, project, `${configuration}.txt`), output.stdout);
     }
 }
+// export for testing
 function getProjectFromTask(task) {
     if (task === 'dependencies') {
         return 'root';
@@ -33853,6 +33858,7 @@ async function calculateDiff(jarPath, tempDirs) {
     }
     return results;
 }
+// export for testing
 function getOldFilePath(filePath, baseDependenciesDir) {
     return path__default.join(baseDependenciesDir, ...filePath.split(path__default.sep).slice(-2));
 }
@@ -33877,9 +33883,11 @@ async function execDiff(jarPath, filePath, oldFilePath) {
     }
     return;
 }
+// export for testing
 function getProjectFromFilePath(filePath) {
     return path__default.basename(path__default.dirname(filePath));
 }
+// export for testing
 function getConfigurationFromFilePath(filePath) {
     return path__default.basename(filePath).replace(/\.txt$/, '');
 }
