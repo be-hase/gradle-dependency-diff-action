@@ -1,6 +1,7 @@
 export declare const BASE_REPO_DIR_NAME = "base-repo";
 export declare const BASE_DEPENDENCIES_DIR_NAME = "base-dependencies";
 export declare const CURRENT_DEPENDENCIES_DIR_NAME = "current-dependencies";
+export declare const RESULT_DIR_NAME = "result";
 export interface Inputs {
     includeProjectRegex: string;
     excludeProjectRegex: string;
@@ -24,6 +25,7 @@ export interface TempDirs {
     baseRepo: string;
     baseDependencies: string;
     currentDependencies: string;
+    result: string;
 }
 export interface DiffResult {
     project: string;

@@ -32,7 +32,12 @@ export async function calculateDiff(
   )
   for (const filePath of await globber.glob()) {
     const oldFilePath = getOldFilePath(filePath, tempDirs.baseDependencies)
-    const result = await execDiff(jarPath, filePath, oldFilePath)
+    const result = await execDiff(
+      jarPath,
+      filePath,
+      oldFilePath,
+      tempDirs.result
+    )
     if (result) {
       results.push(result)
     }
@@ -63,7 +68,8 @@ export function getOldFilePath(
 async function execDiff(
   jarPath: string,
   filePath: string,
-  oldFilePath: string
+  oldFilePath: string,
+  resultDir: string
 ): Promise<DiffResult | undefined> {
   if (!fs.existsSync(oldFilePath)) {
     return
@@ -79,6 +85,10 @@ async function execDiff(
     filePath
   ])
   if (output.stdout) {
+    fs.writeFileSync(
+      path.join(resultDir, `${project}-${configuration}.txt`),
+      output.stdout
+    )
     return {
       project: project,
       configuration: configuration,

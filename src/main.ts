@@ -13,6 +13,7 @@ import {
   CURRENT_DEPENDENCIES_DIR_NAME,
   GradleOptions,
   Inputs,
+  RESULT_DIR_NAME,
   TempDirs
 } from './types.js'
 import * as reporter from './reporter.js'
@@ -69,6 +70,9 @@ export async function run(): Promise<void> {
     if (inputs.assignLabel) {
       await reporter.reportAsLabel(octokitHelper, diffResults, inputs.labelName)
     }
+    if (diffResults.length !== 0) {
+      await reporter.reportAsArtifact(tempDirs.result)
+    }
   } catch (error) {
     // Fail the workflow run if an error occurs
     if (error instanceof Error) {
@@ -108,16 +112,19 @@ export async function createTempDirs(): Promise<TempDirs> {
   const baseRepo = path.join(tempDir, BASE_REPO_DIR_NAME)
   const baseDependencies = path.join(tempDir, BASE_DEPENDENCIES_DIR_NAME)
   const currentDependencies = path.join(tempDir, CURRENT_DEPENDENCIES_DIR_NAME)
+  const result = path.join(tempDir, RESULT_DIR_NAME)
 
   await io.mkdirP(baseRepo)
   await io.mkdirP(baseDependencies)
   await io.mkdirP(currentDependencies)
+  await io.mkdirP(result)
 
   return {
     root: tempDir,
     baseRepo: baseRepo,
     baseDependencies: baseDependencies,
-    currentDependencies: currentDependencies
+    currentDependencies: currentDependencies,
+    result: result
   }
 }
 

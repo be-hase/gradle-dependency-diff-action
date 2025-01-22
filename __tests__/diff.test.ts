@@ -79,6 +79,7 @@ describe('diff.ts', () => {
     const globCreate = jest.spyOn(glob, 'create')
     const existsSync = jest.spyOn(fs, 'existsSync')
     const getExecOutput = jest.spyOn(exec, 'getExecOutput')
+    const writeFileSync = jest.spyOn(fs, 'writeFileSync')
 
     it('success', async () => {
       const jarPath = '/path/to/jar'
@@ -86,7 +87,8 @@ describe('diff.ts', () => {
         root: '/temp',
         baseRepo: '/temp/base-repo',
         baseDependencies: '/temp/base-dependencies',
-        currentDependencies: '/temp/current-dependencies'
+        currentDependencies: '/temp/current-dependencies',
+        result: '/temp/result'
       }
 
       const globber = {
@@ -102,6 +104,7 @@ describe('diff.ts', () => {
       getExecOutput.mockResolvedValueOnce({
         stdout: 'stdout'
       } as exec.ExecOutput)
+      writeFileSync.mockReturnValueOnce()
 
       const result = await calculateDiff(jarPath, tempDirs)
 
@@ -115,6 +118,10 @@ describe('diff.ts', () => {
           result: 'stdout'
         }
       ])
+      expect(writeFileSync).toHaveBeenCalledWith(
+        '/temp/result/bar-configuration.txt',
+        'stdout'
+      )
     })
     it('empty', async () => {
       const jarPath = '/path/to/jar'
@@ -122,7 +129,8 @@ describe('diff.ts', () => {
         root: '/temp',
         baseRepo: '/temp/base-repo',
         baseDependencies: '/temp/base-dependencies',
-        currentDependencies: '/temp/current-dependencies'
+        currentDependencies: '/temp/current-dependencies',
+        result: '/temp/result'
       }
 
       const globber = {

@@ -1,6 +1,9 @@
 import * as github from '@actions/github'
 import { DiffResult } from './types.js'
 import { OctokitHelper } from './octokitHelper.js'
+import { DefaultArtifactClient } from '@actions/artifact'
+import * as glob from '@actions/glob'
+import path from 'path'
 
 const CHECKS_NAME = 'Report of gradle-dependency-diff-action'
 const TAG = '<!-- gradle-dependency-diff-action -->'
@@ -210,4 +213,12 @@ export async function reportAsLabel(
       await octokitHelper.removeLabel(github.context.issue.number, labelName)
     }
   }
+}
+
+export async function reportAsArtifact(resultDir: string) {
+  const globber = await glob.create(path.join(resultDir, '*.txt'))
+  const files = await globber.glob()
+
+  const artifact = new DefaultArtifactClient()
+  await artifact.uploadArtifact(CHECKS_NAME, files, resultDir)
 }
