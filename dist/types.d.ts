@@ -13,6 +13,7 @@ export interface Inputs {
     updatePrBody: boolean;
     assignLabel: boolean;
     labelName: string;
+    uploadArtifact: boolean;
 }
 export interface GradleOptions {
     includeProjectRegex: string;
