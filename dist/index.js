@@ -31286,8 +31286,8 @@ async function execDependenciesTask(task, configurations, outDir, cwd) {
     const project = getProjectFromTask(task);
     await ioExports.mkdirP(path.join(outDir, project));
     for (const configuration of configurations) {
-        coreExports.info(`[${cwd ? 'base' : 'current'}] Executing './gradlew ${task} --configuration ${configuration}'`);
-        const output = await execExports.getExecOutput('./gradlew', [task, '--configuration', configuration], { cwd: cwd, ignoreReturnCode: true, silent: true });
+        coreExports.info(`[${cwd ? 'base' : 'current'}] Executing './gradlew ${task} --configuration-cache --configuration ${configuration}'`);
+        const output = await execExports.getExecOutput('./gradlew', [task, '--configuration-cache', '--configuration', configuration], { cwd: cwd, ignoreReturnCode: true, silent: true });
         if (output.exitCode != 0) {
             continue;
         }

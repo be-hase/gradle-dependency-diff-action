@@ -182,7 +182,12 @@ Root project 'root'
       configurations.forEach((configuration) => {
         expect(getExecOutput).toHaveBeenCalledWith(
           './gradlew',
-          [`${project}:dependencies`, '--configuration', configuration],
+          [
+            `${project}:dependencies`,
+            '--configuration-cache',
+            '--configuration',
+            configuration
+          ],
           {
             ignoreReturnCode: true,
             silent: true

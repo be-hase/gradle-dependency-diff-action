@@ -92,11 +92,11 @@ export async function execDependenciesTask(
 
   for (const configuration of configurations) {
     core.info(
-      `[${cwd ? 'base' : 'current'}] Executing './gradlew ${task} --configuration ${configuration}'`
+      `[${cwd ? 'base' : 'current'}] Executing './gradlew ${task} --configuration-cache --configuration ${configuration}'`
     )
     const output = await exec.getExecOutput(
       './gradlew',
-      [task, '--configuration', configuration],
+      [task, '--configuration-cache', '--configuration', configuration],
       { cwd: cwd, ignoreReturnCode: true, silent: true }
     )
     if (output.exitCode != 0) {
