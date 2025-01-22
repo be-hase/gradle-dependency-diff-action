@@ -4,6 +4,7 @@ import * as path from 'node:path'
 import * as io from '@actions/io'
 import * as core from '@actions/core'
 import { GradleOptions } from './types.js'
+import * as os from 'os'
 
 export async function generateDependenciesFiles(
   gradleOptions: GradleOptions,
@@ -23,12 +24,30 @@ export async function generateDependenciesFiles(
   const tasks = getDependenciesTasks(projects, gradleOptions.includeRootProject)
   core.info(`[${cwd ? 'base' : 'current'}] Detected tasks: ${tasks}`)
 
-  for (const task of tasks) {
-    const configurations = gradleOptions.configurations
-      .split(',')
-      .map((it) => it.trim())
-    await execDependenciesTask(task, configurations, outDir, cwd)
+  const cpuCount = os.cpus().length
+  const configurations: string[] = gradleOptions.configurations
+    .split(',')
+    .map((it) => it.trim())
+
+  const taskQueue = [...tasks]
+  const runningTasks: Promise<void>[] = []
+
+  async function worker() {
+    while (taskQueue.length > 0) {
+      const task = taskQueue.shift()
+      if (task) {
+        for (const configuration of configurations) {
+          await execDependenciesTask(task, configuration, outDir, cwd)
+        }
+      }
+    }
   }
+
+  for (let i = 0; i < cpuCount; i++) {
+    runningTasks.push(worker())
+  }
+
+  await Promise.all(runningTasks)
 }
 
 export async function execGradleProjects(cwd?: string): Promise<string> {
@@ -83,30 +102,28 @@ export function getDependenciesTasks(
 // export for testing
 export async function execDependenciesTask(
   task: string,
-  configurations: string[],
+  configuration: string,
   outDir: string,
   cwd?: string
 ): Promise<void> {
   const project = getProjectFromTask(task)
   await io.mkdirP(path.join(outDir, project))
 
-  for (const configuration of configurations) {
-    core.info(
-      `[${cwd ? 'base' : 'current'}] Executing './gradlew ${task} --configuration-cache --configuration ${configuration}'`
-    )
-    const output = await exec.getExecOutput(
-      './gradlew',
-      [task, '--configuration-cache', '--configuration', configuration],
-      { cwd: cwd, ignoreReturnCode: true, silent: true }
-    )
-    if (output.exitCode != 0) {
-      continue
-    }
-    fs.writeFileSync(
-      path.join(outDir, project, `${configuration}.txt`),
-      output.stdout
-    )
+  core.info(
+    `[${cwd ? 'base' : 'current'}] Executing './gradlew ${task} --configuration-cache --configuration ${configuration}'`
+  )
+  const output = await exec.getExecOutput(
+    './gradlew',
+    [task, '--configuration-cache', '--configuration', configuration],
+    { cwd: cwd, ignoreReturnCode: true, silent: true }
+  )
+  if (output.exitCode != 0) {
+    return
   }
+  fs.writeFileSync(
+    path.join(outDir, project, `${configuration}.txt`),
+    output.stdout
+  )
 }
 
 // export for testing

@@ -1,4 +1,5 @@
-import require$$0 from 'os';
+import * as require$$0 from 'os';
+import require$$0__default from 'os';
 import require$$0$1 from 'crypto';
 import require$$0$2 from 'fs';
 import * as path$1 from 'path';
@@ -145,7 +146,7 @@ function requireCommand () {
 	};
 	Object.defineProperty(command, "__esModule", { value: true });
 	command.issue = command.issueCommand = undefined;
-	const os = __importStar(require$$0);
+	const os = __importStar(require$$0__default);
 	const utils_1 = requireUtils$4();
 	/**
 	 * Commands
@@ -255,7 +256,7 @@ function requireFileCommand () {
 	/* eslint-disable @typescript-eslint/no-explicit-any */
 	const crypto = __importStar(require$$0$1);
 	const fs = __importStar(require$$0$2);
-	const os = __importStar(require$$0);
+	const os = __importStar(require$$0__default);
 	const utils_1 = requireUtils$4();
 	function issueFileCommand(command, message) {
 	    const filePath = process.env[`GITHUB_${command}`];
@@ -25223,7 +25224,7 @@ function requireSummary () {
 		};
 		Object.defineProperty(exports, "__esModule", { value: true });
 		exports.summary = exports.markdownSummary = exports.SUMMARY_DOCS_URL = exports.SUMMARY_ENV_VAR = undefined;
-		const os_1 = require$$0;
+		const os_1 = require$$0__default;
 		const fs_1 = require$$0$2;
 		const { access, appendFile, writeFile } = fs_1.promises;
 		exports.SUMMARY_ENV_VAR = 'GITHUB_STEP_SUMMARY';
@@ -26112,7 +26113,7 @@ function requireToolrunner () {
 	};
 	Object.defineProperty(toolrunner, "__esModule", { value: true });
 	toolrunner.argStringToArray = toolrunner.ToolRunner = undefined;
-	const os = __importStar(require$$0);
+	const os = __importStar(require$$0__default);
 	const events = __importStar(require$$4$1);
 	const child = __importStar(require$$2$3);
 	const path = __importStar(path__default);
@@ -26855,7 +26856,7 @@ function requirePlatform () {
 		};
 		Object.defineProperty(exports, "__esModule", { value: true });
 		exports.getDetails = exports.isLinux = exports.isMacOS = exports.isWindows = exports.arch = exports.platform = undefined;
-		const os_1 = __importDefault(require$$0);
+		const os_1 = __importDefault(require$$0__default);
 		const exec = __importStar(requireExec());
 		const getWindowsInfo = () => __awaiter(undefined, undefined, undefined, function* () {
 		    const { stdout: version } = yield exec.getExecOutput('powershell -command "(Get-CimInstance -ClassName Win32_OperatingSystem).Version"', undefined, {
@@ -26958,7 +26959,7 @@ function requireCore () {
 		const command_1 = requireCommand();
 		const file_command_1 = requireFileCommand();
 		const utils_1 = requireUtils$4();
-		const os = __importStar(require$$0);
+		const os = __importStar(require$$0__default);
 		const path = __importStar(path__default);
 		const oidc_utils_1 = requireOidcUtils();
 		/**
@@ -27282,7 +27283,7 @@ function requireContext () {
 	Object.defineProperty(context, "__esModule", { value: true });
 	context.Context = undefined;
 	const fs_1 = require$$0$2;
-	const os_1 = require$$0;
+	const os_1 = require$$0__default;
 	class Context {
 	    /**
 	     * Hydrate the context from the environment
@@ -31236,12 +31237,26 @@ async function generateDependenciesFiles(gradleOptions, outDir, cwd) {
     coreExports.info(`[${cwd ? 'base' : 'current'}] Detected projects: ${projects}`);
     const tasks = getDependenciesTasks(projects, gradleOptions.includeRootProject);
     coreExports.info(`[${cwd ? 'base' : 'current'}] Detected tasks: ${tasks}`);
-    for (const task of tasks) {
-        const configurations = gradleOptions.configurations
-            .split(',')
-            .map((it) => it.trim());
-        await execDependenciesTask(task, configurations, outDir, cwd);
+    const cpuCount = require$$0.cpus().length;
+    const configurations = gradleOptions.configurations
+        .split(',')
+        .map((it) => it.trim());
+    const taskQueue = [...tasks];
+    const runningTasks = [];
+    async function worker() {
+        while (taskQueue.length > 0) {
+            const task = taskQueue.shift();
+            if (task) {
+                for (const configuration of configurations) {
+                    await execDependenciesTask(task, configuration, outDir, cwd);
+                }
+            }
+        }
     }
+    for (let i = 0; i < cpuCount; i++) {
+        runningTasks.push(worker());
+    }
+    await Promise.all(runningTasks);
 }
 async function execGradleProjects(cwd) {
     const output = await execExports.getExecOutput('./gradlew', ['projects'], {
@@ -31282,17 +31297,15 @@ function getDependenciesTasks(projects, includeRootProject) {
     return tasks;
 }
 // export for testing
-async function execDependenciesTask(task, configurations, outDir, cwd) {
+async function execDependenciesTask(task, configuration, outDir, cwd) {
     const project = getProjectFromTask(task);
     await ioExports.mkdirP(path.join(outDir, project));
-    for (const configuration of configurations) {
-        coreExports.info(`[${cwd ? 'base' : 'current'}] Executing './gradlew ${task} --configuration-cache --configuration ${configuration}'`);
-        const output = await execExports.getExecOutput('./gradlew', [task, '--configuration-cache', '--configuration', configuration], { cwd: cwd, ignoreReturnCode: true, silent: true });
-        if (output.exitCode != 0) {
-            continue;
-        }
-        fs.writeFileSync(path.join(outDir, project, `${configuration}.txt`), output.stdout);
+    coreExports.info(`[${cwd ? 'base' : 'current'}] Executing './gradlew ${task} --configuration-cache --configuration ${configuration}'`);
+    const output = await execExports.getExecOutput('./gradlew', [task, '--configuration-cache', '--configuration', configuration], { cwd: cwd, ignoreReturnCode: true, silent: true });
+    if (output.exitCode != 0) {
+        return;
     }
+    fs.writeFileSync(path.join(outDir, project, `${configuration}.txt`), output.stdout);
 }
 // export for testing
 function getProjectFromTask(task) {
@@ -33163,7 +33176,7 @@ function requireInternalPattern () {
 	};
 	Object.defineProperty(internalPattern, "__esModule", { value: true });
 	internalPattern.Pattern = undefined;
-	const os = __importStar(require$$0);
+	const os = __importStar(require$$0__default);
 	const path = __importStar(path__default);
 	const pathHelper = __importStar(requireInternalPathHelper());
 	const assert_1 = __importDefault(require$$0$4);
@@ -34128,7 +34141,7 @@ function requireTmp () {
 		 * Module dependencies.
 		 */
 		const fs = require$$0$2;
-		const os = require$$0;
+		const os = require$$0__default;
 		const path = path__default;
 		const crypto = require$$0$1;
 		const _c = { fs: fs.constants, os: os.constants };

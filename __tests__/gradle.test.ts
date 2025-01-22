@@ -158,7 +158,7 @@ Root project 'root'
     const writeFileSync = jest.spyOn(fs, 'writeFileSync')
 
     it('test', async () => {
-      const configurations = ['compileClasspath', 'runtimeClasspath']
+      const configuration = 'compileClasspath'
       const outDir = '/temp'
       const project = ':hoge'
 
@@ -174,26 +174,24 @@ Root project 'root'
 
       await execDependenciesTask(
         `${project}:dependencies`,
-        configurations,
+        configuration,
         outDir
       )
 
       expect(mkdirP).toHaveBeenCalledWith(path.join(outDir, project))
-      configurations.forEach((configuration) => {
-        expect(getExecOutput).toHaveBeenCalledWith(
-          './gradlew',
-          [
-            `${project}:dependencies`,
-            '--configuration-cache',
-            '--configuration',
-            configuration
-          ],
-          {
-            ignoreReturnCode: true,
-            silent: true
-          }
-        )
-      })
+      expect(getExecOutput).toHaveBeenCalledWith(
+        './gradlew',
+        [
+          `${project}:dependencies`,
+          '--configuration-cache',
+          '--configuration',
+          configuration
+        ],
+        {
+          ignoreReturnCode: true,
+          silent: true
+        }
+      )
       expect(writeFileSync).toHaveBeenCalledTimes(1)
       expect(writeFileSync).toHaveBeenCalledWith(
         path.join(outDir, project, `compileClasspath.txt`),
