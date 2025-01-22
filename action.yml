@@ -50,6 +50,12 @@ inputs:
     description: 'The label name to use when assigning a label.'
     required: false
     default: 'dependencies-change'
+  upload-artifact:
+    description:
+      'Upload the dependency differences as a text file format to the actions
+      artifact.'
+    required: false
+    default: 'true'
 
 runs:
   using: node20

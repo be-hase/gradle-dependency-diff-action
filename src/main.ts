@@ -70,7 +70,7 @@ export async function run(): Promise<void> {
     if (inputs.assignLabel) {
       await reporter.reportAsLabel(octokitHelper, diffResults, inputs.labelName)
     }
-    if (diffResults.length !== 0) {
+    if (diffResults.length !== 0 && inputs.uploadArtifact) {
       await reporter.reportAsArtifact(tempDirs.result)
     }
   } catch (error) {
@@ -92,7 +92,8 @@ function getInputs(): Inputs {
     postPrComment: core.getBooleanInput('post-pr-comment'),
     updatePrBody: core.getBooleanInput('update-pr-body'),
     assignLabel: core.getBooleanInput('assign-label'),
-    labelName: core.getInput('label-name')
+    labelName: core.getInput('label-name'),
+    uploadArtifact: core.getBooleanInput('upload-artifact')
   }
 }
 

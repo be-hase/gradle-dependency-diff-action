@@ -206261,7 +206261,7 @@ async function run() {
         if (inputs.assignLabel) {
             await reportAsLabel(octokitHelper, diffResults, inputs.labelName);
         }
-        if (diffResults.length !== 0) {
+        if (diffResults.length !== 0 && inputs.uploadArtifact) {
             await reportAsArtifact(tempDirs.result);
         }
     }
@@ -206283,7 +206283,8 @@ function getInputs() {
         postPrComment: coreExports.getBooleanInput('post-pr-comment'),
         updatePrBody: coreExports.getBooleanInput('update-pr-body'),
         assignLabel: coreExports.getBooleanInput('assign-label'),
-        labelName: coreExports.getInput('label-name')
+        labelName: coreExports.getInput('label-name'),
+        uploadArtifact: coreExports.getBooleanInput('upload-artifact')
     };
 }
 function getGradleOptions(inputs) {
