@@ -30,7 +30,7 @@ export async function calculateDiffResults(
 ): Promise<DiffResult[]> {
   const results: DiffResult[] = []
   const globber = await glob.create(
-    path.join('**', 'build', 'reports', 'project', 'dependencies.txt')
+    path.join('./', '**', 'build', 'reports', 'project', 'dependencies.txt')
   )
   for (const filePath of await globber.glob()) {
     console.log(`filePath ${filePath}`)
