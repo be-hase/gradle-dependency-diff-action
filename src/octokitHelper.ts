@@ -73,6 +73,32 @@ export function getOctokitHelper(octokit: Octokit) {
         issue_number: issueNumber,
         name: label
       })
+    },
+
+    async listChecksForRef(ref: string) {
+      return await octokit.rest.checks.listForRef({
+        ...github.context.repo,
+        ref
+      })
+    },
+
+    async createChecks(
+      name: string,
+      headSha: string,
+      conclusion: 'neutral' | 'success',
+      output: {
+        title: string
+        summary: string
+        text: string | undefined
+      }
+    ) {
+      return await octokit.rest.checks.create({
+        ...github.context.repo,
+        name: name,
+        head_sha: headSha,
+        conclusion: conclusion,
+        output: output
+      })
     }
   }
 }

@@ -37,7 +37,19 @@ export async function calculateDiff(
       results.push(result)
     }
   }
-  return results
+  return sortDiffResults(results)
+}
+
+export function sortDiffResults(results: DiffResult[]) {
+  return results.sort((a, b) => {
+    if (a.project === b.project) {
+      return a.configuration.localeCompare(b.configuration)
+    } else {
+      if (a.project === 'gradle-root-project') return -1
+      if (b.project === 'gradle-root-project') return 1
+      return a.project.localeCompare(b.project)
+    }
+  })
 }
 
 // export for testing

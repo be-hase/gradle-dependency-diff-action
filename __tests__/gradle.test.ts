@@ -200,7 +200,7 @@ Root project 'root'
   describe('getProjectFromTask', () => {
     it('root', () => {
       const result = getProjectFromTask('dependencies')
-      expect(result).toEqual('root')
+      expect(result).toEqual('gradle-root-project')
     })
     it('non root', () => {
       const result = getProjectFromTask(':hoge:dependencies')

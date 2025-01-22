@@ -31297,7 +31297,7 @@ async function execDependenciesTask(task, configurations, outDir, cwd) {
 // export for testing
 function getProjectFromTask(task) {
     if (task === 'dependencies') {
-        return 'root';
+        return 'gradle-root-project';
     }
     else {
         return task.replace(/:dependencies$/, '');
@@ -33856,7 +33856,21 @@ async function calculateDiff(jarPath, tempDirs) {
             results.push(result);
         }
     }
-    return results;
+    return sortDiffResults(results);
+}
+function sortDiffResults(results) {
+    return results.sort((a, b) => {
+        if (a.project === b.project) {
+            return a.configuration.localeCompare(b.configuration);
+        }
+        else {
+            if (a.project === 'gradle-root-project')
+                return -1;
+            if (b.project === 'gradle-root-project')
+                return 1;
+            return a.project.localeCompare(b.project);
+        }
+    });
 }
 // export for testing
 function getOldFilePath(filePath, baseDependenciesDir) {
@@ -33899,89 +33913,98 @@ const CURRENT_DEPENDENCIES_DIR_NAME = 'current-dependencies';
 const CHECKS_NAME = 'Report of gradle-dependency-diff-action';
 const TAG = '<!-- gradle-dependency-diff-action -->';
 const PR_BODY_TAG_PATTERN = new RegExp(`${TAG}[\\s\\S]*${TAG}`);
-async function reportAsChecks(octokit, diffResults) {
+async function reportAsChecks(octokitHelper, diffResults) {
     const sha = githubExports.context.payload.pull_request.head.sha;
     const conclusion = diffResults.length == 0 ? 'success' : 'neutral';
-    const output = getChecksOutput(diffResults);
-    const checksResult = await octokit.rest.checks.listForRef({
-        ...githubExports.context.repo,
-        ref: sha
-    });
-    const checksExists = checksResult.data.check_runs.find((check) => check.name === CHECKS_NAME);
+    const outputs = getChecksOutput(diffResults);
+    const checksResult = await octokitHelper.listChecksForRef(sha);
+    const checksExists = checksResult.data.check_runs.find((check) => check.name.includes(CHECKS_NAME));
     if (checksExists) {
-        await octokit.rest.checks.update({
-            ...githubExports.context.repo,
-            check_run_id: checksExists.id,
-            conclusion: conclusion,
-            output: output
+        return [];
+    }
+    if (outputs.length === 1) {
+        const res = await octokitHelper.createChecks(CHECKS_NAME, sha, conclusion, {
+            title: CHECKS_NAME,
+            summary: outputs[0].summary,
+            text: outputs[0].text
         });
-        return checksExists.html_url;
+        return [res.data.html_url];
     }
     else {
-        const result = await octokit.rest.checks.create({
-            ...githubExports.context.repo,
-            name: CHECKS_NAME,
-            head_sha: sha,
-            conclusion: conclusion,
-            output: output
-        });
-        return result.data.html_url;
+        const result = [];
+        for (const [i, output] of outputs.entries()) {
+            const index = i + 1;
+            const res = await octokitHelper.createChecks(`${CHECKS_NAME} ${index}`, sha, conclusion, {
+                title: `${CHECKS_NAME} ${index}`,
+                summary: output.summary,
+                text: output.text
+            });
+            result.push(res.data.html_url);
+        }
+        return result;
     }
 }
 function getChecksOutput(diffResults) {
-    const diffResultsMap = groupByProject(diffResults);
-    return {
-        title: CHECKS_NAME,
-        summary: getCheckOutputSummary(diffResultsMap),
-        text: diffResultsMap.size == 0 ? undefined : getCheckOutputText(diffResultsMap)
-    };
-}
-function groupByProject(diffResults) {
-    return diffResults.reduce((acc, item) => {
-        const key = item.project;
-        if (!acc.has(key)) {
-            acc.set(key, []);
-        }
-        acc.get(key).push(item);
-        return acc;
-    }, new Map());
-}
-function getCheckOutputSummary(diffResultsMap) {
-    const projects = Array.from(diffResultsMap.keys());
-    let summary = '';
-    if (projects.length == 0) {
-        summary += '🆗 There are no differences in the Gradle dependencies.\n';
+    if (diffResults.length === 0) {
+        return [
+            {
+                summary: '🆗 There are no differences in the Gradle dependencies.\n',
+                text: undefined
+            }
+        ];
     }
-    else {
-        summary +=
-            '⚠️ Detected that there are differences in the Gradle dependencies.\n';
-        for (const project of projects) {
-            summary += `- ${project}\n`;
+    const result = [];
+    let currentSummary = [];
+    let currentText = [];
+    function tryFlush() {
+        if (currentSummary.length !== 0) {
+            result.push({
+                summary: '⚠️ Detected that there are differences in the Gradle dependencies.\n' +
+                    currentSummary.join('\n') +
+                    '\n',
+                text: currentText.join('\n') + '\n'
+            });
+            currentSummary = [];
+            currentText = [];
         }
     }
-    return summary;
-}
-function getCheckOutputText(diffResultsMap) {
-    const projects = Array.from(diffResultsMap.keys());
-    let text = '';
-    for (const project of projects) {
-        text += `### ${project}\n`;
-        for (const diffResult of diffResultsMap.get(project)) {
-            text += `#### ${diffResult.configuration}\n`;
-            text += '```diff\n';
-            text += `${diffResult.result}\n`;
-            text += '```\n';
+    for (const diffResult of diffResults) {
+        const summary = `- ${diffResult.project} - ${diffResult.configuration}`;
+        let text = `### ${diffResult.project} - ${diffResult.configuration}\n`;
+        text += '```diff\n';
+        text += `${diffResult.result}\n`;
+        text += '```';
+        if (currentText.join('\n').length + text.length < 65535) {
+            currentSummary.push(summary);
+            currentText.push(text);
         }
-        text += '\n';
+        else {
+            tryFlush();
+            if (text.length >= 65535) {
+                text = `### ${diffResult.project} - ${diffResult.configuration}\n`;
+                text += '```diff\n';
+                text += `${diffResult.result.substring(0, 65400)}\n`;
+                text += '```\n';
+                text += '※ Diff is too large, so truncated.';
+            }
+            currentSummary.push(summary);
+            currentText.push(text);
+        }
     }
-    return text;
+    tryFlush();
+    return result;
 }
-async function reportAsPrComment(octokitHelper, checksUrl, diffResults) {
+async function reportAsPrComment(octokitHelper, urls, diffResults) {
     const hasDiff = diffResults.length > 0;
     const commentId = await findCommentByTag(octokitHelper, TAG);
     const existComment = commentId !== -1;
     if (hasDiff) {
-        const commentBody = `> [!Note]\n> Detected that there are [differences](${checksUrl}) in the Gradle dependencies.\n${TAG}`;
+        let commentBody = `> [!Note]\n`;
+        commentBody += `> Detected that there are differences in the Gradle dependencies.\n`;
+        for (const url of urls) {
+            commentBody += `> - ${url}\n`;
+        }
+        commentBody += `${TAG}`;
         if (existComment) {
             // exist comment
             await octokitHelper.updateComment(commentId, commentBody);
@@ -34002,7 +34025,7 @@ async function findCommentByTag(octokitHelper, tag) {
     const comment = comments.find((c) => c?.body?.includes(tag));
     return comment ? comment.id : -1;
 }
-async function reportAsPrBody(octokitHelper, checksUrl, diffResults) {
+async function reportAsPrBody(octokitHelper, urls, diffResults) {
     const hasDiff = diffResults.length > 0;
     const response = await octokitHelper.getPullRequest(githubExports.context.issue.number);
     const originalPrBody = response.data.body || '';
@@ -34010,13 +34033,16 @@ async function reportAsPrBody(octokitHelper, checksUrl, diffResults) {
     if (hasDiff) {
         let message = `${TAG}\n`;
         message += `> [!Note]\n`;
-        message += `> Detected that there are [differences](${checksUrl}) in the Gradle dependencies.\n`;
+        message += `> Detected that there are differences in the Gradle dependencies.\n`;
+        for (const url of urls) {
+            message += `> - ${url}\n`;
+        }
         message += `${TAG}`;
         if (prBody.match(PR_BODY_TAG_PATTERN)) {
             prBody = prBody.replace(PR_BODY_TAG_PATTERN, message);
         }
         else {
-            prBody += `\n${message}\n`;
+            prBody += `\n${message}`;
         }
     }
     else {
@@ -34104,6 +34130,21 @@ function getOctokitHelper(octokit) {
                 issue_number: issueNumber,
                 name: label
             });
+        },
+        async listChecksForRef(ref) {
+            return await octokit.rest.checks.listForRef({
+                ...githubExports.context.repo,
+                ref
+            });
+        },
+        async createChecks(name, headSha, conclusion, output) {
+            return await octokit.rest.checks.create({
+                ...githubExports.context.repo,
+                name: name,
+                head_sha: headSha,
+                conclusion: conclusion,
+                output: output
+            });
         }
     };
 }
@@ -34134,12 +34175,14 @@ async function run() {
             baseUrl: githubExports.context.apiUrl
         });
         const octokitHelper = getOctokitHelper(octokit);
-        const checksUrl = await reportAsChecks(octokit, diffResults);
-        if (inputs.postPrComment) {
-            await reportAsPrComment(octokitHelper, checksUrl, diffResults);
-        }
-        if (inputs.updatePrBody) {
-            await reportAsPrBody(octokitHelper, checksUrl, diffResults);
+        const urls = await reportAsChecks(octokitHelper, diffResults);
+        if (urls.length !== 0) {
+            if (inputs.postPrComment) {
+                await reportAsPrComment(octokitHelper, urls, diffResults);
+            }
+            if (inputs.updatePrBody) {
+                await reportAsPrBody(octokitHelper, urls, diffResults);
+            }
         }
         if (inputs.assignLabel) {
             await reportAsLabel(octokitHelper, diffResults, inputs.labelName);

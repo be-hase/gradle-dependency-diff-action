@@ -112,7 +112,7 @@ export async function execDependenciesTask(
 // export for testing
 export function getProjectFromTask(task: string): string {
   if (task === 'dependencies') {
-    return 'root'
+    return 'gradle-root-project'
   } else {
     return task.replace(/:dependencies$/, '')
   }

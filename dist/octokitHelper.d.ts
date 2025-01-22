@@ -1434,4 +1434,327 @@ export declare function getOctokitHelper(octokit: Octokit): {
         color: string;
         default: boolean;
     }[], 200>>;
+    listChecksForRef(ref: string): Promise<import("@octokit/plugin-paginate-rest/dist-types/types.js").OctokitResponse<{
+        total_count: number;
+        check_runs: {
+            id: number;
+            head_sha: string;
+            node_id: string;
+            external_id: string | null;
+            url: string;
+            html_url: string | null;
+            details_url: string | null;
+            status: "queued" | "in_progress" | "completed";
+            conclusion: "success" | "failure" | "neutral" | "cancelled" | "skipped" | "timed_out" | "action_required" | null;
+            started_at: string | null;
+            completed_at: string | null;
+            output: {
+                title: string | null;
+                summary: string | null;
+                text: string | null;
+                annotations_count: number;
+                annotations_url: string;
+            };
+            name: string;
+            check_suite: {
+                id: number;
+            } | null;
+            app: {
+                id: number;
+                slug?: string;
+                node_id: string;
+                owner: {
+                    name?: string | null;
+                    email?: string | null;
+                    login: string;
+                    id: number;
+                    node_id: string;
+                    avatar_url: string;
+                    gravatar_id: string | null;
+                    url: string;
+                    html_url: string;
+                    followers_url: string;
+                    following_url: string;
+                    gists_url: string;
+                    starred_url: string;
+                    subscriptions_url: string;
+                    organizations_url: string;
+                    repos_url: string;
+                    events_url: string;
+                    received_events_url: string;
+                    type: string;
+                    site_admin: boolean;
+                    starred_at?: string;
+                } | null;
+                name: string;
+                description: string | null;
+                external_url: string;
+                html_url: string;
+                created_at: string;
+                updated_at: string;
+                permissions: {
+                    issues?: string;
+                    checks?: string;
+                    metadata?: string;
+                    contents?: string;
+                    deployments?: string;
+                    [key: string]: string | undefined;
+                };
+                events: string[];
+                installations_count?: number;
+                client_id?: string;
+                client_secret?: string;
+                webhook_secret?: string | null;
+                pem?: string;
+            } | null;
+            pull_requests: {
+                id: number;
+                number: number;
+                url: string;
+                head: {
+                    ref: string;
+                    sha: string;
+                    repo: {
+                        id: number;
+                        url: string;
+                        name: string;
+                    };
+                };
+                base: {
+                    ref: string;
+                    sha: string;
+                    repo: {
+                        id: number;
+                        url: string;
+                        name: string;
+                    };
+                };
+            }[];
+            deployment?: {
+                url: string;
+                id: number;
+                node_id: string;
+                task: string;
+                original_environment?: string;
+                environment: string;
+                description: string | null;
+                created_at: string;
+                updated_at: string;
+                statuses_url: string;
+                repository_url: string;
+                transient_environment?: boolean;
+                production_environment?: boolean;
+                performed_via_github_app?: {
+                    id: number;
+                    slug?: string;
+                    node_id: string;
+                    owner: {
+                        name?: string | null;
+                        email?: string | null;
+                        login: string;
+                        id: number;
+                        node_id: string;
+                        avatar_url: string;
+                        gravatar_id: string | null;
+                        url: string;
+                        html_url: string;
+                        followers_url: string;
+                        following_url: string;
+                        gists_url: string;
+                        starred_url: string;
+                        subscriptions_url: string;
+                        organizations_url: string;
+                        repos_url: string;
+                        events_url: string;
+                        received_events_url: string;
+                        type: string;
+                        site_admin: boolean;
+                        starred_at?: string;
+                    } | null;
+                    name: string;
+                    description: string | null;
+                    external_url: string;
+                    html_url: string;
+                    created_at: string;
+                    updated_at: string;
+                    permissions: {
+                        issues?: string;
+                        checks?: string;
+                        metadata?: string;
+                        contents?: string;
+                        deployments?: string;
+                        [key: string]: string | undefined;
+                    };
+                    events: string[];
+                    installations_count?: number;
+                    client_id?: string;
+                    client_secret?: string;
+                    webhook_secret?: string | null;
+                    pem?: string;
+                } | null;
+            };
+        }[];
+    }, 200>>;
+    createChecks(name: string, headSha: string, conclusion: "neutral" | "success", output: {
+        title: string;
+        summary: string;
+        text: string | undefined;
+    }): Promise<import("@octokit/plugin-paginate-rest/dist-types/types.js").OctokitResponse<{
+        id: number;
+        head_sha: string;
+        node_id: string;
+        external_id: string | null;
+        url: string;
+        html_url: string | null;
+        details_url: string | null;
+        status: "queued" | "in_progress" | "completed";
+        conclusion: "success" | "failure" | "neutral" | "cancelled" | "skipped" | "timed_out" | "action_required" | null;
+        started_at: string | null;
+        completed_at: string | null;
+        output: {
+            title: string | null;
+            summary: string | null;
+            text: string | null;
+            annotations_count: number;
+            annotations_url: string;
+        };
+        name: string;
+        check_suite: {
+            id: number;
+        } | null;
+        app: {
+            id: number;
+            slug?: string;
+            node_id: string;
+            owner: {
+                name?: string | null;
+                email?: string | null;
+                login: string;
+                id: number;
+                node_id: string;
+                avatar_url: string;
+                gravatar_id: string | null;
+                url: string;
+                html_url: string;
+                followers_url: string;
+                following_url: string;
+                gists_url: string;
+                starred_url: string;
+                subscriptions_url: string;
+                organizations_url: string;
+                repos_url: string;
+                events_url: string;
+                received_events_url: string;
+                type: string;
+                site_admin: boolean;
+                starred_at?: string;
+            } | null;
+            name: string;
+            description: string | null;
+            external_url: string;
+            html_url: string;
+            created_at: string;
+            updated_at: string;
+            permissions: {
+                issues?: string;
+                checks?: string;
+                metadata?: string;
+                contents?: string;
+                deployments?: string;
+                [key: string]: string | undefined;
+            };
+            events: string[];
+            installations_count?: number;
+            client_id?: string;
+            client_secret?: string;
+            webhook_secret?: string | null;
+            pem?: string;
+        } | null;
+        pull_requests: {
+            id: number;
+            number: number;
+            url: string;
+            head: {
+                ref: string;
+                sha: string;
+                repo: {
+                    id: number;
+                    url: string;
+                    name: string;
+                };
+            };
+            base: {
+                ref: string;
+                sha: string;
+                repo: {
+                    id: number;
+                    url: string;
+                    name: string;
+                };
+            };
+        }[];
+        deployment?: {
+            url: string;
+            id: number;
+            node_id: string;
+            task: string;
+            original_environment?: string;
+            environment: string;
+            description: string | null;
+            created_at: string;
+            updated_at: string;
+            statuses_url: string;
+            repository_url: string;
+            transient_environment?: boolean;
+            production_environment?: boolean;
+            performed_via_github_app?: {
+                id: number;
+                slug?: string;
+                node_id: string;
+                owner: {
+                    name?: string | null;
+                    email?: string | null;
+                    login: string;
+                    id: number;
+                    node_id: string;
+                    avatar_url: string;
+                    gravatar_id: string | null;
+                    url: string;
+                    html_url: string;
+                    followers_url: string;
+                    following_url: string;
+                    gists_url: string;
+                    starred_url: string;
+                    subscriptions_url: string;
+                    organizations_url: string;
+                    repos_url: string;
+                    events_url: string;
+                    received_events_url: string;
+                    type: string;
+                    site_admin: boolean;
+                    starred_at?: string;
+                } | null;
+                name: string;
+                description: string | null;
+                external_url: string;
+                html_url: string;
+                created_at: string;
+                updated_at: string;
+                permissions: {
+                    issues?: string;
+                    checks?: string;
+                    metadata?: string;
+                    contents?: string;
+                    deployments?: string;
+                    [key: string]: string | undefined;
+                };
+                events: string[];
+                installations_count?: number;
+                client_id?: string;
+                client_secret?: string;
+                webhook_secret?: string | null;
+                pem?: string;
+            } | null;
+        };
+    }, 201>>;
 };

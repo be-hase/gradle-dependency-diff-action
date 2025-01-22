@@ -57,12 +57,14 @@ export async function run(): Promise<void> {
       baseUrl: github.context.apiUrl
     })
     const octokitHelper = getOctokitHelper(octokit)
-    const checksUrl = await reporter.reportAsChecks(octokit, diffResults)
-    if (inputs.postPrComment) {
-      await reporter.reportAsPrComment(octokitHelper, checksUrl, diffResults)
-    }
-    if (inputs.updatePrBody) {
-      await reporter.reportAsPrBody(octokitHelper, checksUrl, diffResults)
+    const urls = await reporter.reportAsChecks(octokitHelper, diffResults)
+    if (urls.length !== 0) {
+      if (inputs.postPrComment) {
+        await reporter.reportAsPrComment(octokitHelper, urls, diffResults)
+      }
+      if (inputs.updatePrBody) {
+        await reporter.reportAsPrBody(octokitHelper, urls, diffResults)
+      }
     }
     if (inputs.assignLabel) {
       await reporter.reportAsLabel(octokitHelper, diffResults, inputs.labelName)

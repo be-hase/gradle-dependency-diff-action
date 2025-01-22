@@ -3,7 +3,8 @@ import {
   downloadJar,
   getConfigurationFromFilePath,
   getOldFilePath,
-  getProjectFromFilePath
+  getProjectFromFilePath,
+  sortDiffResults
 } from '../src/diff'
 import path from 'path'
 import { jest } from '@jest/globals'
@@ -135,6 +136,27 @@ describe('diff.ts', () => {
         '/temp/current-dependencies/**/*.txt'
       )
       expect(result).toEqual([])
+    })
+  })
+
+  describe('sortDiffResults', () => {
+    it('sortDiffResults', () => {
+      const result = sortDiffResults([
+        { project: ':b', configuration: 'b', result: '' },
+        { project: ':b', configuration: 'a', result: '' },
+        { project: ':a', configuration: 'b', result: '' },
+        { project: ':a', configuration: 'a', result: '' },
+        { project: 'gradle-root-project', configuration: 'b', result: '' },
+        { project: 'gradle-root-project', configuration: 'a', result: '' }
+      ])
+      expect(result).toEqual([
+        { project: 'gradle-root-project', configuration: 'a', result: '' },
+        { project: 'gradle-root-project', configuration: 'b', result: '' },
+        { project: ':a', configuration: 'a', result: '' },
+        { project: ':a', configuration: 'b', result: '' },
+        { project: ':b', configuration: 'a', result: '' },
+        { project: ':b', configuration: 'b', result: '' }
+      ])
     })
   })
 
