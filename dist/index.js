@@ -33778,9 +33778,7 @@ async function downloadJar(version, tempDir) {
 }
 async function calculateDiffResults$1(jarPath, configuration, tempDirs) {
     const results = [];
-    coreExports.info('hogehoge');
-    await execExports.exec('ls', ['-la']);
-    const globber = await globExports.create(path__default.join('./', '**', 'build', 'reports', 'project', 'dependencies.txt'));
+    const globber = await globExports.create(path__default.join('**', 'build', 'reports', 'project', 'dependencies.txt'));
     for (const filePath of await globber.glob()) {
         coreExports.info(`filePath ${filePath}`);
         const oldFilePath = path__default.join(tempDirs.baseRepo, filePath);

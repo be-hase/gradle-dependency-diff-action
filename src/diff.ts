@@ -30,10 +30,8 @@ export async function calculateDiffResults(
   tempDirs: TempDirs
 ): Promise<DiffResult[]> {
   const results: DiffResult[] = []
-  core.info('hogehoge')
-  await exec.exec('ls', ['-la'])
   const globber = await glob.create(
-    path.join('./', '**', 'build', 'reports', 'project', 'dependencies.txt')
+    path.join('**', 'build', 'reports', 'project', 'dependencies.txt')
   )
   for (const filePath of await globber.glob()) {
     core.info(`filePath ${filePath}`)
