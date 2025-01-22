@@ -153,6 +153,7 @@ async function calculateDiffResults(
   for (const configuration of configurations) {
     await gradle.generateDependenciesFiles(configuration)
     await gradle.generateDependenciesFiles(configuration, tempDirs.baseRepo)
+    core.info("barbar")
     const configurationDiffResults = await diff.calculateDiffResults(
       jarPath,
       configuration,
