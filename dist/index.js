@@ -1,5 +1,4 @@
-import * as require$$0 from 'os';
-import require$$0__default from 'os';
+import require$$0 from 'os';
 import require$$0$1 from 'crypto';
 import require$$0$2 from 'fs';
 import * as path$1 from 'path';
@@ -146,7 +145,7 @@ function requireCommand () {
 	};
 	Object.defineProperty(command, "__esModule", { value: true });
 	command.issue = command.issueCommand = undefined;
-	const os = __importStar(require$$0__default);
+	const os = __importStar(require$$0);
 	const utils_1 = requireUtils$4();
 	/**
 	 * Commands
@@ -256,7 +255,7 @@ function requireFileCommand () {
 	/* eslint-disable @typescript-eslint/no-explicit-any */
 	const crypto = __importStar(require$$0$1);
 	const fs = __importStar(require$$0$2);
-	const os = __importStar(require$$0__default);
+	const os = __importStar(require$$0);
 	const utils_1 = requireUtils$4();
 	function issueFileCommand(command, message) {
 	    const filePath = process.env[`GITHUB_${command}`];
@@ -25224,7 +25223,7 @@ function requireSummary () {
 		};
 		Object.defineProperty(exports, "__esModule", { value: true });
 		exports.summary = exports.markdownSummary = exports.SUMMARY_DOCS_URL = exports.SUMMARY_ENV_VAR = undefined;
-		const os_1 = require$$0__default;
+		const os_1 = require$$0;
 		const fs_1 = require$$0$2;
 		const { access, appendFile, writeFile } = fs_1.promises;
 		exports.SUMMARY_ENV_VAR = 'GITHUB_STEP_SUMMARY';
@@ -26113,7 +26112,7 @@ function requireToolrunner () {
 	};
 	Object.defineProperty(toolrunner, "__esModule", { value: true });
 	toolrunner.argStringToArray = toolrunner.ToolRunner = undefined;
-	const os = __importStar(require$$0__default);
+	const os = __importStar(require$$0);
 	const events = __importStar(require$$4$1);
 	const child = __importStar(require$$2$3);
 	const path = __importStar(path__default);
@@ -26856,7 +26855,7 @@ function requirePlatform () {
 		};
 		Object.defineProperty(exports, "__esModule", { value: true });
 		exports.getDetails = exports.isLinux = exports.isMacOS = exports.isWindows = exports.arch = exports.platform = undefined;
-		const os_1 = __importDefault(require$$0__default);
+		const os_1 = __importDefault(require$$0);
 		const exec = __importStar(requireExec());
 		const getWindowsInfo = () => __awaiter(undefined, undefined, undefined, function* () {
 		    const { stdout: version } = yield exec.getExecOutput('powershell -command "(Get-CimInstance -ClassName Win32_OperatingSystem).Version"', undefined, {
@@ -26959,7 +26958,7 @@ function requireCore () {
 		const command_1 = requireCommand();
 		const file_command_1 = requireFileCommand();
 		const utils_1 = requireUtils$4();
-		const os = __importStar(require$$0__default);
+		const os = __importStar(require$$0);
 		const path = __importStar(path__default);
 		const oidc_utils_1 = requireOidcUtils();
 		/**
@@ -27283,7 +27282,7 @@ function requireContext () {
 	Object.defineProperty(context, "__esModule", { value: true });
 	context.Context = undefined;
 	const fs_1 = require$$0$2;
-	const os_1 = require$$0__default;
+	const os_1 = require$$0;
 	class Context {
 	    /**
 	     * Hydrate the context from the environment
@@ -31237,20 +31236,14 @@ async function generateDependenciesFiles(gradleOptions, outDir, cwd) {
     coreExports.info(`[${cwd ? 'base' : 'current'}] Detected projects: ${projects}`);
     const tasks = getDependenciesTasks(projects, gradleOptions.includeRootProject);
     coreExports.info(`[${cwd ? 'base' : 'current'}] Detected tasks: ${tasks}`);
-    const cpuCount = require$$0.cpus().length;
     const configurations = gradleOptions.configurations
         .split(',')
         .map((it) => it.trim());
-    const taskChunks = Array.from({ length: cpuCount }, (_, i) => tasks.filter((_, index) => index % cpuCount === i));
-    async function worker(taskChunk) {
-        for (const task of taskChunk) {
-            for (const configuration of configurations) {
-                await execDependenciesTask(task, configuration, outDir, cwd);
-            }
+    for (const task of tasks) {
+        for (const configuration of configurations) {
+            await execDependenciesTask(task, configuration, outDir, cwd);
         }
     }
-    const workers = taskChunks.map((chunk) => worker(chunk));
-    await Promise.all(workers);
 }
 async function execGradleProjects(cwd) {
     const output = await execExports.getExecOutput('./gradlew', ['projects'], {
@@ -33170,7 +33163,7 @@ function requireInternalPattern () {
 	};
 	Object.defineProperty(internalPattern, "__esModule", { value: true });
 	internalPattern.Pattern = undefined;
-	const os = __importStar(require$$0__default);
+	const os = __importStar(require$$0);
 	const path = __importStar(path__default);
 	const pathHelper = __importStar(requireInternalPathHelper());
 	const assert_1 = __importDefault(require$$0$4);
@@ -34135,7 +34128,7 @@ function requireTmp () {
 		 * Module dependencies.
 		 */
 		const fs = require$$0$2;
-		const os = require$$0__default;
+		const os = require$$0;
 		const path = path__default;
 		const crypto = require$$0$1;
 		const _c = { fs: fs.constants, os: os.constants };

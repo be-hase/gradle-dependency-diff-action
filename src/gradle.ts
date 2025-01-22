@@ -4,7 +4,6 @@ import * as path from 'node:path'
 import * as io from '@actions/io'
 import * as core from '@actions/core'
 import { GradleOptions } from './types.js'
-import * as os from 'os'
 
 export async function generateDependenciesFiles(
   gradleOptions: GradleOptions,
@@ -24,26 +23,15 @@ export async function generateDependenciesFiles(
   const tasks = getDependenciesTasks(projects, gradleOptions.includeRootProject)
   core.info(`[${cwd ? 'base' : 'current'}] Detected tasks: ${tasks}`)
 
-  const cpuCount = os.cpus().length
-  const configurations: string[] = gradleOptions.configurations
+  const configurations = gradleOptions.configurations
     .split(',')
     .map((it) => it.trim())
 
-  const taskChunks = Array.from({ length: cpuCount }, (_, i) =>
-    tasks.filter((_, index) => index % cpuCount === i)
-  )
-
-  async function worker(taskChunk: string[]) {
-    for (const task of taskChunk) {
-      for (const configuration of configurations) {
-        await execDependenciesTask(task, configuration, outDir, cwd)
-      }
+  for (const task of tasks) {
+    for (const configuration of configurations) {
+      await execDependenciesTask(task, configuration, outDir, cwd)
     }
   }
-
-  const workers = taskChunks.map((chunk) => worker(chunk))
-
-  await Promise.all(workers)
 }
 
 export async function execGradleProjects(cwd?: string): Promise<string> {
