@@ -4,7 +4,6 @@ import { DiffResult, TempDirs } from './types.js'
 import * as exec from '@actions/exec'
 import * as glob from '@actions/glob'
 import * as io from '@actions/io'
-import * as core from '@actions/core'
 
 export async function downloadJar(
   version: string,
@@ -36,10 +35,8 @@ export async function calculateDiffResults(
   for (const filePath of await globber.glob()) {
     const oldFilePath = path.join(
       tempDirs.baseRepo,
-      removePrefix(filePath, process.cwd() + path.sep)
+      removePrefix(filePath, process.env.GITHUB_WORKSPACE + path.sep)
     )
-    core.info(`filePath ${filePath}`)
-    core.info(`oldFilePath ${oldFilePath}`)
     const result = await execDiff(
       jarPath,
       configuration,

@@ -33780,7 +33780,7 @@ async function calculateDiffResults$1(jarPath, configuration, tempDirs) {
     const results = [];
     const globber = await globExports.create(path__default.join('**', 'build', 'reports', 'project', 'dependencies.txt'));
     for (const filePath of await globber.glob()) {
-        const oldFilePath = path__default.join(tempDirs.baseRepo, removePrefix(filePath, process.cwd() + path__default.sep));
+        const oldFilePath = path__default.join(tempDirs.baseRepo, removePrefix(filePath, process.env.GITHUB_WORKSPACE + path__default.sep));
         coreExports.info(`filePath ${filePath}`);
         coreExports.info(`oldFilePath ${oldFilePath}`);
         const result = await execDiff(jarPath, configuration, filePath, oldFilePath, tempDirs.result);
