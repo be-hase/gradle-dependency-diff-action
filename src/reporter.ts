@@ -151,10 +151,8 @@ export async function reportToCustomEndpoint(
     },
     body: JSON.stringify({ body: markdownText })
   })
-  console.log(res.statusText)
 
   const json = (await res.json()) as { url: string }
-  console.log(json)
   return [json.url]
 }
 
