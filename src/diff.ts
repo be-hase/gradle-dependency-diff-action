@@ -85,8 +85,9 @@ async function execDiff(
     filePath
   ])
   if (output.stdout) {
+    const projectDir = project.split(':').filter((s) => s !== '')
     fs.writeFileSync(
-      path.join(resultDir, `${project}-${configuration}.txt`),
+      path.join(resultDir, projectDir.join(path.sep), `${configuration}.txt`),
       output.stdout
     )
     return {

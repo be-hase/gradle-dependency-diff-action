@@ -94,8 +94,8 @@ describe('diff.ts', () => {
       const globber = {
         glob: () =>
           Promise.resolve([
-            '/temp/current-dependencies/hoge/configuration.txt',
-            '/temp/current-dependencies/bar/configuration.txt'
+            '/temp/current-dependencies/:hoge/configuration.txt',
+            '/temp/current-dependencies/:bar/configuration.txt'
           ])
       }
       globCreate.mockResolvedValueOnce(globber as glob.Globber)
@@ -113,13 +113,13 @@ describe('diff.ts', () => {
       )
       expect(result).toEqual([
         {
-          project: 'bar',
+          project: ':bar',
           configuration: 'configuration',
           result: 'stdout'
         }
       ])
       expect(writeFileSync).toHaveBeenCalledWith(
-        '/temp/result/bar-configuration.txt',
+        '/temp/result/bar/configuration.txt',
         'stdout'
       )
     })

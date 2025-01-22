@@ -216,7 +216,7 @@ export async function reportAsLabel(
 }
 
 export async function reportAsArtifact(resultDir: string) {
-  const globber = await glob.create(path.join(resultDir, '*.txt'))
+  const globber = await glob.create(path.join(resultDir, '**', '*.txt'))
   const files = await globber.glob()
 
   const artifact = new DefaultArtifactClient()

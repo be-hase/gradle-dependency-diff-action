@@ -33906,7 +33906,8 @@ async function execDiff(jarPath, filePath, oldFilePath, resultDir) {
         filePath
     ]);
     if (output.stdout) {
-        require$$0__default.writeFileSync(path__default.join(resultDir, `${project}-${configuration}.txt`), output.stdout);
+        const projectDir = project.split(':').filter((s) => s !== '');
+        require$$0__default.writeFileSync(path__default.join(resultDir, projectDir.join(path__default.sep), `${configuration}.txt`), output.stdout);
         return {
             project: project,
             configuration: configuration,
@@ -206133,7 +206134,7 @@ async function reportAsLabel(octokitHelper, diffResults, labelName) {
     }
 }
 async function reportAsArtifact(resultDir) {
-    const globber = await globExports.create(path__default.join(resultDir, '*.txt'));
+    const globber = await globExports.create(path__default.join(resultDir, '**', '*.txt'));
     const files = await globber.glob();
     const artifact = new artifactExports.DefaultArtifactClient();
     await artifact.uploadArtifact(CHECKS_NAME, files, resultDir);
