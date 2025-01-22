@@ -29,25 +29,21 @@ export async function generateDependenciesFiles(
     .split(',')
     .map((it) => it.trim())
 
-  const taskQueue = [...tasks]
-  const runningTasks: Promise<void>[] = []
+  const taskChunks = Array.from({ length: cpuCount }, (_, i) =>
+    tasks.filter((_, index) => index % cpuCount === i)
+  )
 
-  async function worker() {
-    while (taskQueue.length > 0) {
-      const task = taskQueue.shift()
-      if (task) {
-        for (const configuration of configurations) {
-          await execDependenciesTask(task, configuration, outDir, cwd)
-        }
+  async function worker(taskChunk: string[]) {
+    for (const task of taskChunk) {
+      for (const configuration of configurations) {
+        await execDependenciesTask(task, configuration, outDir, cwd)
       }
     }
   }
 
-  for (let i = 0; i < cpuCount; i++) {
-    runningTasks.push(worker())
-  }
+  const workers = taskChunks.map((chunk) => worker(chunk))
 
-  await Promise.all(runningTasks)
+  await Promise.all(workers)
 }
 
 export async function execGradleProjects(cwd?: string): Promise<string> {

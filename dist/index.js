@@ -31241,22 +31241,16 @@ async function generateDependenciesFiles(gradleOptions, outDir, cwd) {
     const configurations = gradleOptions.configurations
         .split(',')
         .map((it) => it.trim());
-    const taskQueue = [...tasks];
-    const runningTasks = [];
-    async function worker() {
-        while (taskQueue.length > 0) {
-            const task = taskQueue.shift();
-            if (task) {
-                for (const configuration of configurations) {
-                    await execDependenciesTask(task, configuration, outDir, cwd);
-                }
+    const taskChunks = Array.from({ length: cpuCount }, (_, i) => tasks.filter((_, index) => index % cpuCount === i));
+    async function worker(taskChunk) {
+        for (const task of taskChunk) {
+            for (const configuration of configurations) {
+                await execDependenciesTask(task, configuration, outDir, cwd);
             }
         }
     }
-    for (let i = 0; i < cpuCount; i++) {
-        runningTasks.push(worker());
-    }
-    await Promise.all(runningTasks);
+    const workers = taskChunks.map((chunk) => worker(chunk));
+    await Promise.all(workers);
 }
 async function execGradleProjects(cwd) {
     const output = await execExports.getExecOutput('./gradlew', ['projects'], {
