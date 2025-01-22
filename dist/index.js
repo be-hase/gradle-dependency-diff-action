@@ -33780,8 +33780,8 @@ async function calculateDiffResults$1(jarPath, configuration, tempDirs) {
     const results = [];
     const globber = await globExports.create(path__default.join('**', 'build', 'reports', 'project', 'dependencies.txt'));
     for (const filePath of await globber.glob()) {
+        const oldFilePath = path__default.join(tempDirs.baseRepo, removePrefix(filePath, process.cwd() + path__default.sep));
         coreExports.info(`filePath ${filePath}`);
-        const oldFilePath = path__default.join(tempDirs.baseRepo, filePath);
         coreExports.info(`oldFilePath ${oldFilePath}`);
         const result = await execDiff(jarPath, configuration, filePath, oldFilePath, tempDirs.result);
         if (result) {
@@ -33789,6 +33789,12 @@ async function calculateDiffResults$1(jarPath, configuration, tempDirs) {
         }
     }
     return results;
+}
+function removePrefix(str, prefix) {
+    if (str.startsWith(prefix)) {
+        return str.slice(prefix.length);
+    }
+    return str;
 }
 function sortDiffResults(results) {
     return results.sort((a, b) => {

@@ -34,8 +34,11 @@ export async function calculateDiffResults(
     path.join('**', 'build', 'reports', 'project', 'dependencies.txt')
   )
   for (const filePath of await globber.glob()) {
+    const oldFilePath = path.join(
+      tempDirs.baseRepo,
+      removePrefix(filePath, process.cwd() + path.sep)
+    )
     core.info(`filePath ${filePath}`)
-    const oldFilePath = path.join(tempDirs.baseRepo, filePath)
     core.info(`oldFilePath ${oldFilePath}`)
     const result = await execDiff(
       jarPath,
@@ -49,6 +52,13 @@ export async function calculateDiffResults(
     }
   }
   return results
+}
+
+function removePrefix(str: string, prefix: string): string {
+  if (str.startsWith(prefix)) {
+    return str.slice(prefix.length)
+  }
+  return str
 }
 
 export function sortDiffResults(results: DiffResult[]) {
