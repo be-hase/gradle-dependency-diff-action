@@ -12,6 +12,7 @@ import fs from 'fs'
 import { TempDirs } from '../src/types'
 import * as glob from '@actions/glob'
 import * as exec from '@actions/exec'
+import * as io from '@actions/io'
 
 describe('diff.ts', () => {
   beforeEach(() => {
@@ -80,6 +81,7 @@ describe('diff.ts', () => {
     const existsSync = jest.spyOn(fs, 'existsSync')
     const getExecOutput = jest.spyOn(exec, 'getExecOutput')
     const writeFileSync = jest.spyOn(fs, 'writeFileSync')
+    const mkdirP = jest.spyOn(io, 'mkdirP')
 
     it('success', async () => {
       const jarPath = '/path/to/jar'
@@ -104,6 +106,7 @@ describe('diff.ts', () => {
       getExecOutput.mockResolvedValueOnce({
         stdout: 'stdout'
       } as exec.ExecOutput)
+      mkdirP.mockResolvedValueOnce()
       writeFileSync.mockReturnValueOnce()
 
       const result = await calculateDiff(jarPath, tempDirs)

@@ -33907,7 +33907,9 @@ async function execDiff(jarPath, filePath, oldFilePath, resultDir) {
     ]);
     if (output.stdout) {
         const projectDir = project.split(':').filter((s) => s !== '');
-        require$$0__default.writeFileSync(path__default.join(resultDir, projectDir.join(path__default.sep), `${configuration}.txt`), output.stdout);
+        const filePath = path__default.join(resultDir, projectDir.join(path__default.sep), `${configuration}.txt`);
+        await ioExports.mkdirP(path__default.dirname(filePath));
+        require$$0__default.writeFileSync(filePath, output.stdout);
         return {
             project: project,
             configuration: configuration,

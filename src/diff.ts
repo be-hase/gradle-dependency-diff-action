@@ -3,6 +3,7 @@ import fs from 'fs'
 import { DiffResult, TempDirs } from './types.js'
 import * as exec from '@actions/exec'
 import * as glob from '@actions/glob'
+import * as io from '@actions/io'
 
 export async function downloadJar(
   version: string,
@@ -86,10 +87,14 @@ async function execDiff(
   ])
   if (output.stdout) {
     const projectDir = project.split(':').filter((s) => s !== '')
-    fs.writeFileSync(
-      path.join(resultDir, projectDir.join(path.sep), `${configuration}.txt`),
-      output.stdout
+    const filePath = path.join(
+      resultDir,
+      projectDir.join(path.sep),
+      `${configuration}.txt`
     )
+    await io.mkdirP(path.dirname(filePath))
+    fs.writeFileSync(filePath, output.stdout)
+
     return {
       project: project,
       configuration: configuration,
