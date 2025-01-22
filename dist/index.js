@@ -34171,8 +34171,15 @@ function getGitUrl(token) {
 }
 // export for testing
 async function cloneBaseRepository(gitUrl, baseRepoDir) {
-    await execExports.exec('git', ['clone', '--depth', '1', gitUrl, baseRepoDir]);
-    await execExports.exec('git', ['checkout', githubExports.context.payload.pull_request?.base.sha], { cwd: baseRepoDir });
+    await execExports.exec('git', [
+        'clone',
+        '--depth',
+        '1',
+        '-b',
+        githubExports.context.payload.pull_request?.base.ref,
+        gitUrl,
+        baseRepoDir
+    ]);
 }
 
 /**

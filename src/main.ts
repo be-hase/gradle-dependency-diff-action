@@ -134,10 +134,13 @@ export async function cloneBaseRepository(
   gitUrl: string,
   baseRepoDir: string
 ): Promise<void> {
-  await exec.exec('git', ['clone', '--depth', '1', gitUrl, baseRepoDir])
-  await exec.exec(
-    'git',
-    ['checkout', github.context.payload.pull_request?.base.sha],
-    { cwd: baseRepoDir }
-  )
+  await exec.exec('git', [
+    'clone',
+    '--depth',
+    '1',
+    '-b',
+    github.context.payload.pull_request?.base.ref,
+    gitUrl,
+    baseRepoDir
+  ])
 }
