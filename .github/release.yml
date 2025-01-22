@@ -2,19 +2,19 @@ changelog:
   categories:
     - title: 🌟 New features
       labels:
-        - "new feature"
+        - 'new feature'
     - title: ☢️ Breaking changes
       labels:
-        - "breaking changes"
+        - 'breaking changes'
     - title: 🛠️ Bug fixes
       labels:
-        - "bug"
+        - 'bug'
     - title: 📈 Other Changes
       labels:
-        - "*"
+        - '*'
       exclude:
         labels:
-          - "renovate"
+          - 'renovate'
     - title: ⛓ Dependencies
       labels:
-        - "renovate"
+        - 'renovate'
