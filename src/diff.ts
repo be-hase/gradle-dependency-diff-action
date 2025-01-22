@@ -33,7 +33,9 @@ export async function calculateDiffResults(
     path.join('**', 'build', 'reports', 'project', 'dependencies.txt')
   )
   for (const filePath of await globber.glob()) {
+    console.log(`filePath ${filePath}`)
     const oldFilePath = path.join(tempDirs.baseRepo, filePath)
+    console.log(`oldFilePath ${oldFilePath}`)
     const result = await execDiff(
       jarPath,
       configuration,
