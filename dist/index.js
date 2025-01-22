@@ -34141,6 +34141,7 @@ function getGradleOptions(inputs) {
         configurations: inputs.configurations
     };
 }
+// export for testing
 async function createTempDirs() {
     const tempDir = await createTempDirectory();
     const baseRepo = path$1.join(tempDir, BASE_REPO_DIR_NAME);
@@ -34156,6 +34157,7 @@ async function createTempDirs() {
         currentDependencies: currentDependencies
     };
 }
+// export for testing
 function getGitUrl(token) {
     const url = new URL(githubExports.context.serverUrl);
     if (token.startsWith('ghp_')) {
@@ -34167,6 +34169,7 @@ function getGitUrl(token) {
     }
     return `${url.toString()}${githubExports.context.repo.owner}/${githubExports.context.repo.repo}`;
 }
+// export for testing
 async function cloneBaseRepository(gitUrl, baseRepoDir) {
     await execExports.exec('git', ['clone', '--depth', '1', gitUrl, baseRepoDir]);
     await execExports.exec('git', ['checkout', githubExports.context.payload.pull_request?.base.sha], { cwd: baseRepoDir });

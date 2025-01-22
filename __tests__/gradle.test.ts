@@ -24,42 +24,37 @@ describe('gradle.ts', () => {
     const writeFileSync = jest.spyOn(fs, 'writeFileSync')
 
     it('test', async () => {
+      const projects = [':hoge', ':bar']
+      const configurations = ['compileClasspath', 'runtimeClasspath']
+
       getExecOutput.mockResolvedValueOnce({
-        stdout: `+--- Project ':hoge'\n+--- Project ':fuga'`
+        stdout: `+--- Project ':hoge'\n+--- Project ':bar'`
       } as exec.ExecOutput)
       mkdirP.mockResolvedValue()
       getExecOutput.mockResolvedValue({
         exitCode: 0,
         stdout: 'stdout'
       } as exec.ExecOutput)
-      writeFileSync.mockImplementation(() => {})
+      writeFileSync.mockReturnValue()
 
       await generateDependenciesFiles(
         {
           includeProjectRegex: '',
           excludeProjectRegex: '',
           includeRootProject: false,
-          configurations: 'compileClasspath, runtimeClasspath'
+          configurations: configurations.join(', ')
         },
         '/temp'
       )
 
-      expect(writeFileSync).toHaveBeenCalledWith(
-        path.join('/temp', ':hoge', `compileClasspath.txt`),
-        'stdout'
-      )
-      expect(writeFileSync).toHaveBeenCalledWith(
-        path.join('/temp', ':hoge', `runtimeClasspath.txt`),
-        'stdout'
-      )
-      expect(writeFileSync).toHaveBeenCalledWith(
-        path.join('/temp', ':fuga', `compileClasspath.txt`),
-        'stdout'
-      )
-      expect(writeFileSync).toHaveBeenCalledWith(
-        path.join('/temp', ':fuga', `runtimeClasspath.txt`),
-        'stdout'
-      )
+      projects.forEach((project) => {
+        configurations.forEach((configuration) => {
+          expect(writeFileSync).toHaveBeenCalledWith(
+            path.join('/temp', project, `${configuration}.txt`),
+            'stdout'
+          )
+        })
+      })
     })
   })
 
@@ -94,12 +89,12 @@ Root project 'root'
 
 Root project 'root'
 +--- Project ':hoge'
-+--- Project ':fuga'
-|    +--- Project ':fuga:dog' - hoge's
-|    +--- Project ':fuga:cat'
++--- Project ':bar'
+|    +--- Project ':bar:dog' - hoge's
+|    +--- Project ':bar:cat'
 `
       const result = parseGradleProjects(text)
-      expect(result).toEqual([':hoge', ':fuga', ':fuga:dog', ':fuga:cat'])
+      expect(result).toEqual([':hoge', ':bar', ':bar:dog', ':bar:cat'])
     })
     it('empty', () => {
       const result = parseGradleProjects('')
@@ -110,50 +105,50 @@ Root project 'root'
   describe('filterGradleProjects', () => {
     it('includeProjectRegex', () => {
       const result = filterGradleProjects(
-        [':hoge', ':fuga', ':fuga:dog', ':fuga:cat'],
-        'fuga',
+        [':hoge', ':bar', ':bar:dog', ':bar:cat'],
+        'bar',
         ''
       )
-      expect(result).toEqual([':fuga', ':fuga:dog', ':fuga:cat'])
+      expect(result).toEqual([':bar', ':bar:dog', ':bar:cat'])
     })
     it('excludeProjectRegex', () => {
       const result = filterGradleProjects(
-        [':hoge', ':fuga', ':fuga:dog', ':fuga:cat'],
+        [':hoge', ':bar', ':bar:dog', ':bar:cat'],
         '',
-        'fuga'
+        'bar'
       )
       expect(result).toEqual([':hoge'])
     })
     it('both includeProjectRegex and excludeProjectRegex', () => {
       const result = filterGradleProjects(
-        [':hoge', ':fuga', ':fuga:dog', ':fuga:cat'],
-        'fuga',
+        [':hoge', ':bar', ':bar:dog', ':bar:cat'],
+        'bar',
         'cat'
       )
-      expect(result).toEqual([':fuga', ':fuga:dog'])
+      expect(result).toEqual([':bar', ':bar:dog'])
     })
     it('no filter', () => {
       const result = filterGradleProjects(
-        [':hoge', ':fuga', ':fuga:dog', ':fuga:cat'],
+        [':hoge', ':bar', ':bar:dog', ':bar:cat'],
         '',
         ''
       )
-      expect(result).toEqual([':hoge', ':fuga', ':fuga:dog', ':fuga:cat'])
+      expect(result).toEqual([':hoge', ':bar', ':bar:dog', ':bar:cat'])
     })
   })
 
   describe('getDependenciesTasks', () => {
     it('includeRootProject true', () => {
-      const result = getDependenciesTasks([':hoge', ':fuga'], true)
+      const result = getDependenciesTasks([':hoge', ':bar'], true)
       expect(result).toEqual([
         'dependencies',
         ':hoge:dependencies',
-        ':fuga:dependencies'
+        ':bar:dependencies'
       ])
     })
     it('includeRootProject false', () => {
-      const result = getDependenciesTasks([':hoge', ':fuga'], false)
-      expect(result).toEqual([':hoge:dependencies', ':fuga:dependencies'])
+      const result = getDependenciesTasks([':hoge', ':bar'], false)
+      expect(result).toEqual([':hoge:dependencies', ':bar:dependencies'])
     })
   })
 
@@ -163,6 +158,10 @@ Root project 'root'
     const writeFileSync = jest.spyOn(fs, 'writeFileSync')
 
     it('test', async () => {
+      const configurations = ['compileClasspath', 'runtimeClasspath']
+      const outDir = '/temp'
+      const project = ':hoge'
+
       mkdirP.mockResolvedValueOnce()
       getExecOutput.mockResolvedValueOnce({
         stdout: 'stdout1',
@@ -171,34 +170,28 @@ Root project 'root'
       getExecOutput.mockResolvedValueOnce({
         exitCode: 1
       } as exec.ExecOutput)
-      writeFileSync.mockImplementation(() => {})
+      writeFileSync.mockReturnValue()
 
       await execDependenciesTask(
-        ':hoge:dependencies',
-        ['compileClasspath', 'runtimeClasspath'],
-        '/temp'
+        `${project}:dependencies`,
+        configurations,
+        outDir
       )
 
-      expect(mkdirP).toHaveBeenCalledWith(path.join('/temp', ':hoge'))
-      expect(getExecOutput).toHaveBeenCalledWith(
-        './gradlew',
-        [':hoge:dependencies', '--configuration', 'compileClasspath'],
-        {
-          ignoreReturnCode: true,
-          silent: true
-        }
-      )
-      expect(getExecOutput).toHaveBeenCalledWith(
-        './gradlew',
-        [':hoge:dependencies', '--configuration', 'runtimeClasspath'],
-        {
-          ignoreReturnCode: true,
-          silent: true
-        }
-      )
+      expect(mkdirP).toHaveBeenCalledWith(path.join(outDir, project))
+      configurations.forEach((configuration) => {
+        expect(getExecOutput).toHaveBeenCalledWith(
+          './gradlew',
+          [`${project}:dependencies`, '--configuration', configuration],
+          {
+            ignoreReturnCode: true,
+            silent: true
+          }
+        )
+      })
       expect(writeFileSync).toHaveBeenCalledTimes(1)
       expect(writeFileSync).toHaveBeenCalledWith(
-        path.join('/temp', ':hoge', `compileClasspath.txt`),
+        path.join(outDir, project, `compileClasspath.txt`),
         'stdout1'
       )
     })

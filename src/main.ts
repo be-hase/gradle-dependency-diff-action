@@ -97,7 +97,8 @@ function getGradleOptions(inputs: Inputs): GradleOptions {
   }
 }
 
-async function createTempDirs(): Promise<TempDirs> {
+// export for testing
+export async function createTempDirs(): Promise<TempDirs> {
   const tempDir = await utils.createTempDirectory()
 
   const baseRepo = path.join(tempDir, BASE_REPO_DIR_NAME)
@@ -116,6 +117,7 @@ async function createTempDirs(): Promise<TempDirs> {
   }
 }
 
+// export for testing
 export function getGitUrl(token: string): string {
   const url = new URL(github.context.serverUrl)
   if (token.startsWith('ghp_')) {
@@ -127,6 +129,7 @@ export function getGitUrl(token: string): string {
   return `${url.toString()}${github.context.repo.owner}/${github.context.repo.repo}`
 }
 
+// export for testing
 export async function cloneBaseRepository(
   gitUrl: string,
   baseRepoDir: string

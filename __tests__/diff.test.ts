@@ -21,7 +21,7 @@ describe('diff.ts', () => {
     const fetch = jest.spyOn(global, 'fetch')
     const writeFileSync = jest.spyOn(fs, 'writeFileSync')
 
-    it('should download the jar file and save it to the specified directory', async () => {
+    it('success', async () => {
       const version = 'v1.0.0'
       const tempDir = '/temp'
       const jarPath = path.join(tempDir, 'dependency-tree-diff.jar')
@@ -46,7 +46,7 @@ describe('diff.ts', () => {
       )
       expect(result).toBe(jarPath)
     })
-    it('should throw an error if fetch fails', async () => {
+    it('fetch failed', async () => {
       const version = 'v1.0.0'
       const tempDir = '/temp'
 
@@ -59,7 +59,7 @@ describe('diff.ts', () => {
         `https://github.com/JakeWharton/dependency-tree-diff/releases/download/${version}/dependency-tree-diff.jar`
       )
     })
-    it('should throw an error if fetch throw an error', async () => {
+    it('fetch throw error', async () => {
       const version = 'v1.0.0'
       const tempDir = '/temp'
 
@@ -79,7 +79,7 @@ describe('diff.ts', () => {
     const existsSync = jest.spyOn(fs, 'existsSync')
     const getExecOutput = jest.spyOn(exec, 'getExecOutput')
 
-    it('should calculate diffs and return results', async () => {
+    it('success', async () => {
       const jarPath = '/path/to/jar'
       const tempDirs: TempDirs = {
         root: '/temp',
@@ -115,7 +115,7 @@ describe('diff.ts', () => {
         }
       ])
     })
-    it('should return an empty array if no diffs are found', async () => {
+    it('empty', async () => {
       const jarPath = '/path/to/jar'
       const tempDirs: TempDirs = {
         root: '/temp',
