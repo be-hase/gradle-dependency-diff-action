@@ -100,7 +100,7 @@ describe('reporter.ts', () => {
         'neutral',
         {
           title: 'Report of gradle-dependency-diff-action 1',
-          summary: `⚠️ Detected that there are differences in the Gradle dependencies.
+          summary: `Detected that there are differences in the Gradle dependencies.
 - :A - configuration
 `,
           text: `### :A - configuration
@@ -116,7 +116,7 @@ A
         'neutral',
         {
           title: 'Report of gradle-dependency-diff-action 2',
-          summary: `⚠️ Detected that there are differences in the Gradle dependencies.
+          summary: `Detected that there are differences in the Gradle dependencies.
 - :B - configuration
 `,
           text: `### :B - configuration
@@ -147,7 +147,7 @@ ${'B'.repeat(65400)}
       const result = getChecksOutput(diffResults)
       expect(result).toEqual([
         {
-          summary: `⚠️ Detected that there are differences in the Gradle dependencies.
+          summary: `Detected that there are differences in the Gradle dependencies.
 - :A - configuration
 `,
           text: `### :A - configuration
@@ -167,7 +167,7 @@ resultA
       const result = getChecksOutput(diffResults)
       expect(result).toEqual([
         {
-          summary: `⚠️ Detected that there are differences in the Gradle dependencies.
+          summary: `Detected that there are differences in the Gradle dependencies.
 - :A - configuration1
 - :A - configuration2
 - :B - configuration1
@@ -209,7 +209,7 @@ resultB1
       const result = getChecksOutput(diffResults)
       expect(result).toEqual([
         {
-          summary: `⚠️ Detected that there are differences in the Gradle dependencies.
+          summary: `Detected that there are differences in the Gradle dependencies.
 - :A - configuration
 `,
           text: `### :A - configuration
@@ -219,7 +219,7 @@ ${'A'.repeat(1000)}
 `
         },
         {
-          summary: `⚠️ Detected that there are differences in the Gradle dependencies.
+          summary: `Detected that there are differences in the Gradle dependencies.
 - :B - configuration
 `,
           text: `### :B - configuration
@@ -229,7 +229,7 @@ ${'B'.repeat(65000)}
 `
         },
         {
-          summary: `⚠️ Detected that there are differences in the Gradle dependencies.
+          summary: `Detected that there are differences in the Gradle dependencies.
 - :C - configuration
 `,
           text: `### :C - configuration
@@ -261,7 +261,7 @@ ${'C'.repeat(1000)}
       const result = getChecksOutput(diffResults)
       expect(result).toEqual([
         {
-          summary: `⚠️ Detected that there are differences in the Gradle dependencies.
+          summary: `Detected that there are differences in the Gradle dependencies.
 - :A - configuration
 - :B - configuration
 `,
@@ -276,7 +276,7 @@ ${'B'.repeat(65000)}
 `
         },
         {
-          summary: `⚠️ Detected that there are differences in the Gradle dependencies.
+          summary: `Detected that there are differences in the Gradle dependencies.
 - :C - configuration
 `,
           text: `### :C - configuration
@@ -303,7 +303,7 @@ ${'C'.repeat(300)}
       const result = getChecksOutput(diffResults)
       expect(result).toEqual([
         {
-          summary: `⚠️ Detected that there are differences in the Gradle dependencies.
+          summary: `Detected that there are differences in the Gradle dependencies.
 - :A - configuration
 `,
           text: `### :A - configuration
@@ -314,7 +314,7 @@ ${'A'.repeat(65400)}
 `
         },
         {
-          summary: `⚠️ Detected that there are differences in the Gradle dependencies.
+          summary: `Detected that there are differences in the Gradle dependencies.
 - :B - configuration
 `,
           text: `### :B - configuration

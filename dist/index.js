@@ -33959,7 +33959,7 @@ function getChecksOutput(diffResults) {
     function tryFlush() {
         if (currentSummary.length !== 0) {
             result.push({
-                summary: '⚠️ Detected that there are differences in the Gradle dependencies.\n' +
+                summary: 'Detected that there are differences in the Gradle dependencies.\n' +
                     currentSummary.join('\n') +
                     '\n',
                 text: currentText.join('\n') + '\n'
