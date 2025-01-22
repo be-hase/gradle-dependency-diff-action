@@ -1,10 +1,10 @@
 import {
   getChecksOutput,
-  reportAsChecks,
-  reportAsCustomEndpoint,
-  reportAsLabel,
-  reportAsPrBody,
-  reportAsPrComment
+  reportToChecks,
+  reportToCustomEndpoint,
+  reportToLabel,
+  reportToPrBody,
+  reportToPrComment
 } from '../src/reporter'
 import { DiffResult } from '../src/types'
 import { jest } from '@jest/globals'
@@ -43,7 +43,7 @@ describe('reporter.ts', () => {
         }
       } as never)
 
-      const result = await reportAsChecks(octokitHelper, [])
+      const result = await reportToChecks(octokitHelper, [])
 
       expect(result).toEqual([])
     })
@@ -55,7 +55,7 @@ describe('reporter.ts', () => {
         data: { html_url: 'url' }
       } as never)
 
-      const result = await reportAsChecks(octokitHelper, [])
+      const result = await reportToChecks(octokitHelper, [])
 
       expect(result).toEqual(['url'])
       expect(octokitHelper.createChecks).toHaveBeenCalledWith(
@@ -92,7 +92,7 @@ describe('reporter.ts', () => {
         data: { html_url: 'url2' }
       } as never)
 
-      const result = await reportAsChecks(octokitHelper, diffResults)
+      const result = await reportToChecks(octokitHelper, diffResults)
 
       expect(result).toEqual(['url1', 'url2'])
       expect(octokitHelper.createChecks).toHaveBeenCalledWith(
@@ -333,7 +333,7 @@ ${'B'.repeat(65400)}
     const fetch = jest.spyOn(global, 'fetch')
 
     it('empty', async () => {
-      const result = await reportAsCustomEndpoint('url', ['a:b', 'c:d'], [])
+      const result = await reportToCustomEndpoint('url', ['a:b', 'c:d'], [])
       expect(result).toEqual([])
     })
     it('test', async () => {
@@ -359,7 +359,7 @@ ${'B'.repeat(65400)}
       }
       fetch.mockResolvedValueOnce(res as Response)
 
-      const result = await reportAsCustomEndpoint(
+      const result = await reportToCustomEndpoint(
         'url',
         ['a:b', 'c:d'],
         diffResults
@@ -380,7 +380,7 @@ ${'B'.repeat(65400)}
         { id: 10, body: '<!-- gradle-dependency-diff-action -->' } as never
       ])
 
-      await reportAsPrComment(octokitHelper, ['url'], [{} as DiffResult])
+      await reportToPrComment(octokitHelper, ['url'], [{} as DiffResult])
 
       expect(octokitHelper.updateComment).toHaveBeenCalledWith(
         10,
@@ -393,7 +393,7 @@ ${'B'.repeat(65400)}
     it('hasDiff && !existComment', async () => {
       octokitHelper.listComments.mockResolvedValueOnce([])
 
-      await reportAsPrComment(octokitHelper, ['url'], [{} as DiffResult])
+      await reportToPrComment(octokitHelper, ['url'], [{} as DiffResult])
 
       expect(octokitHelper.createComment).toHaveBeenCalledWith(
         1,
@@ -408,7 +408,7 @@ ${'B'.repeat(65400)}
         { id: 10, body: '<!-- gradle-dependency-diff-action -->' } as never
       ])
 
-      await reportAsPrComment(octokitHelper, ['url'], [])
+      await reportToPrComment(octokitHelper, ['url'], [])
 
       expect(octokitHelper.deleteComment).toHaveBeenCalledWith(10)
     })
@@ -426,7 +426,7 @@ hogehoge
         data: { body: originalBody }
       } as never)
 
-      await reportAsPrBody(octokitHelper, ['url1', 'url2'], [{} as DiffResult])
+      await reportToPrBody(octokitHelper, ['url1', 'url2'], [{} as DiffResult])
 
       const updatedBody = `hogehoge
 
@@ -448,7 +448,7 @@ hogehoge
         data: { body: originalBody }
       } as never)
 
-      await reportAsPrBody(octokitHelper, ['url'], [{} as DiffResult])
+      await reportToPrBody(octokitHelper, ['url'], [{} as DiffResult])
 
       const updatedBody = `hogehoge
 <!-- gradle-dependency-diff-action -->
@@ -472,7 +472,7 @@ hogehoge
         data: { body: originalBody }
       } as never)
 
-      await reportAsPrBody(octokitHelper, ['url'], [])
+      await reportToPrBody(octokitHelper, ['url'], [])
 
       const updatedBody = `hogehoge
 
@@ -489,7 +489,7 @@ hogehoge
         data: { body: originalBody }
       } as never)
 
-      await reportAsPrBody(octokitHelper, ['url'], [])
+      await reportToPrBody(octokitHelper, ['url'], [])
 
       expect(octokitHelper.updatePullRequest).toHaveBeenCalledTimes(0)
     })
@@ -501,14 +501,14 @@ hogehoge
         { name: 'labelName' } as never
       ])
 
-      await reportAsLabel(octokitHelper, [{} as DiffResult], 'labelName')
+      await reportToLabel(octokitHelper, [{} as DiffResult], 'labelName')
 
       expect(octokitHelper.addLabels).toHaveBeenCalledTimes(0)
     })
     it('hasDiff && !exists', async () => {
       octokitHelper.listLabelsOnIssue.mockResolvedValueOnce([])
 
-      await reportAsLabel(octokitHelper, [{} as DiffResult], 'labelName')
+      await reportToLabel(octokitHelper, [{} as DiffResult], 'labelName')
 
       expect(octokitHelper.addLabels).toHaveBeenCalledWith(1, ['labelName'])
     })
@@ -517,14 +517,14 @@ hogehoge
         { name: 'labelName' } as never
       ])
 
-      await reportAsLabel(octokitHelper, [], 'labelName')
+      await reportToLabel(octokitHelper, [], 'labelName')
 
       expect(octokitHelper.removeLabel).toHaveBeenCalledWith(1, 'labelName')
     })
     it('!hasDiff && !exists', async () => {
       octokitHelper.listLabelsOnIssue.mockResolvedValueOnce([])
 
-      await reportAsLabel(octokitHelper, [], 'labelName')
+      await reportToLabel(octokitHelper, [], 'labelName')
 
       expect(octokitHelper.removeLabel).toHaveBeenCalledTimes(0)
     })

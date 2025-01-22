@@ -61,27 +61,27 @@ export async function run(): Promise<void> {
     // report
     let urls: string[]
     if (inputs.customEndpointUrl.length > 0) {
-      urls = await reporter.reportAsCustomEndpoint(
+      urls = await reporter.reportToCustomEndpoint(
         inputs.customEndpointUrl,
         inputs.customEndpointHeaders,
         diffResults
       )
     } else {
-      urls = await reporter.reportAsChecks(octokitHelper, diffResults)
+      urls = await reporter.reportToChecks(octokitHelper, diffResults)
     }
     if (urls.length !== 0) {
       if (inputs.postPrComment) {
-        await reporter.reportAsPrComment(octokitHelper, urls, diffResults)
+        await reporter.reportToPrComment(octokitHelper, urls, diffResults)
       }
       if (inputs.updatePrBody) {
-        await reporter.reportAsPrBody(octokitHelper, urls, diffResults)
+        await reporter.reportToPrBody(octokitHelper, urls, diffResults)
       }
     }
     if (inputs.assignLabel) {
-      await reporter.reportAsLabel(octokitHelper, diffResults, inputs.labelName)
+      await reporter.reportToLabel(octokitHelper, diffResults, inputs.labelName)
     }
     if (diffResults.length !== 0 && inputs.uploadArtifact) {
-      await reporter.reportAsArtifact(tempDirs.result)
+      await reporter.reportToArtifact(tempDirs.result)
     }
   } catch (error) {
     // Fail the workflow run if an error occurs

@@ -205981,7 +205981,7 @@ var artifactExports = requireArtifact();
 const CHECKS_NAME = 'Report of gradle-dependency-diff-action';
 const TAG = '<!-- gradle-dependency-diff-action -->';
 const PR_BODY_TAG_PATTERN = new RegExp(`${TAG}[\\s\\S]*${TAG}`);
-async function reportAsChecks(octokitHelper, diffResults) {
+async function reportToChecks(octokitHelper, diffResults) {
     const sha = githubExports.context.payload.pull_request.head.sha;
     const conclusion = diffResults.length == 0 ? 'success' : 'neutral';
     const outputs = getChecksOutput(diffResults);
@@ -206062,7 +206062,7 @@ function getChecksOutput(diffResults) {
     tryFlush();
     return result;
 }
-async function reportAsCustomEndpoint(endpointUrl, headers, diffResults) {
+async function reportToCustomEndpoint(endpointUrl, headers, diffResults) {
     if (diffResults.length === 0) {
         return [];
     }
@@ -206091,7 +206091,7 @@ async function reportAsCustomEndpoint(endpointUrl, headers, diffResults) {
     const json = (await res.json());
     return [json.url];
 }
-async function reportAsPrComment(octokitHelper, urls, diffResults) {
+async function reportToPrComment(octokitHelper, urls, diffResults) {
     const hasDiff = diffResults.length > 0;
     const commentId = await findCommentByTag(octokitHelper, TAG);
     const existComment = commentId !== -1;
@@ -206122,7 +206122,7 @@ async function findCommentByTag(octokitHelper, tag) {
     const comment = comments.find((c) => c?.body?.includes(tag));
     return comment ? comment.id : -1;
 }
-async function reportAsPrBody(octokitHelper, urls, diffResults) {
+async function reportToPrBody(octokitHelper, urls, diffResults) {
     const hasDiff = diffResults.length > 0;
     const response = await octokitHelper.getPullRequest(githubExports.context.issue.number);
     const originalPrBody = response.data.body || '';
@@ -206149,7 +206149,7 @@ async function reportAsPrBody(octokitHelper, urls, diffResults) {
         await octokitHelper.updatePullRequest(githubExports.context.issue.number, prBody);
     }
 }
-async function reportAsLabel(octokitHelper, diffResults, labelName) {
+async function reportToLabel(octokitHelper, diffResults, labelName) {
     const hasDiff = diffResults.length > 0;
     const labels = await octokitHelper.listLabelsOnIssue(githubExports.context.issue.number);
     const exists = !!labels.find((it) => it.name === labelName);
@@ -206164,7 +206164,7 @@ async function reportAsLabel(octokitHelper, diffResults, labelName) {
         }
     }
 }
-async function reportAsArtifact(resultDir) {
+async function reportToArtifact(resultDir) {
     const globber = await globExports.create(path__default.join(resultDir, '**', '*.txt'));
     const files = await globber.glob();
     const artifact = new artifactExports.DefaultArtifactClient();
@@ -206280,24 +206280,24 @@ async function run() {
         // report
         let urls;
         if (inputs.customEndpointUrl.length > 0) {
-            urls = await reportAsCustomEndpoint(inputs.customEndpointUrl, inputs.customEndpointHeaders, diffResults);
+            urls = await reportToCustomEndpoint(inputs.customEndpointUrl, inputs.customEndpointHeaders, diffResults);
         }
         else {
-            urls = await reportAsChecks(octokitHelper, diffResults);
+            urls = await reportToChecks(octokitHelper, diffResults);
         }
         if (urls.length !== 0) {
             if (inputs.postPrComment) {
-                await reportAsPrComment(octokitHelper, urls, diffResults);
+                await reportToPrComment(octokitHelper, urls, diffResults);
             }
             if (inputs.updatePrBody) {
-                await reportAsPrBody(octokitHelper, urls, diffResults);
+                await reportToPrBody(octokitHelper, urls, diffResults);
             }
         }
         if (inputs.assignLabel) {
-            await reportAsLabel(octokitHelper, diffResults, inputs.labelName);
+            await reportToLabel(octokitHelper, diffResults, inputs.labelName);
         }
         if (diffResults.length !== 0 && inputs.uploadArtifact) {
-            await reportAsArtifact(tempDirs.result);
+            await reportToArtifact(tempDirs.result);
         }
     }
     catch (error) {

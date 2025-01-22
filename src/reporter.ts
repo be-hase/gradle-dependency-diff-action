@@ -9,7 +9,7 @@ const CHECKS_NAME = 'Report of gradle-dependency-diff-action'
 const TAG = '<!-- gradle-dependency-diff-action -->'
 const PR_BODY_TAG_PATTERN = new RegExp(`${TAG}[\\s\\S]*${TAG}`)
 
-export async function reportAsChecks(
+export async function reportToChecks(
   octokitHelper: OctokitHelper,
   diffResults: DiffResult[]
 ): Promise<string[]> {
@@ -112,7 +112,7 @@ export function getChecksOutput(diffResults: DiffResult[]): {
   return result
 }
 
-export async function reportAsCustomEndpoint(
+export async function reportToCustomEndpoint(
   endpointUrl: string,
   headers: string[],
   diffResults: DiffResult[]
@@ -150,7 +150,7 @@ export async function reportAsCustomEndpoint(
   return [json.url]
 }
 
-export async function reportAsPrComment(
+export async function reportToPrComment(
   octokitHelper: OctokitHelper,
   urls: string[],
   diffResults: DiffResult[]
@@ -194,7 +194,7 @@ async function findCommentByTag(
   return comment ? comment.id : -1
 }
 
-export async function reportAsPrBody(
+export async function reportToPrBody(
   octokitHelper: OctokitHelper,
   urls: string[],
   diffResults: DiffResult[]
@@ -230,7 +230,7 @@ export async function reportAsPrBody(
   }
 }
 
-export async function reportAsLabel(
+export async function reportToLabel(
   octokitHelper: OctokitHelper,
   diffResults: DiffResult[],
   labelName: string
@@ -253,7 +253,7 @@ export async function reportAsLabel(
   }
 }
 
-export async function reportAsArtifact(resultDir: string) {
+export async function reportToArtifact(resultDir: string) {
   const globber = await glob.create(path.join(resultDir, '**', '*.txt'))
   const files = await globber.glob()
 
