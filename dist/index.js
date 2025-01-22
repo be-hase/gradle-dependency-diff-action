@@ -31230,8 +31230,7 @@ var execExports = requireExec();
 
 async function generateDependenciesFiles(configuration, cwd) {
     await execExports.getExecOutput('./gradlew', ['clean dependencyReport', '--configuration', configuration], {
-        cwd: cwd,
-        silent: true
+        cwd: cwd
     });
 }
 

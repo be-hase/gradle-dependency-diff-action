@@ -8,8 +8,7 @@ export async function generateDependenciesFiles(
     './gradlew',
     ['clean dependencyReport', '--configuration', configuration],
     {
-      cwd: cwd,
-      silent: true
+      cwd: cwd
     }
   )
 }
