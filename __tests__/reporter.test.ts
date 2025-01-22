@@ -32,8 +32,8 @@ describe('reporter.ts', () => {
 
   describe('getChecksOutput', () => {
     it('empty', () => {
-      const actual = getChecksOutput([])
-      expect(actual).toEqual({
+      const result = getChecksOutput([])
+      expect(result).toEqual({
         title: 'Report of gradle-dependency-diff-action',
         summary: '🆗 There are no differences in the Gradle dependencies.\n',
         text: undefined
@@ -45,8 +45,8 @@ describe('reporter.ts', () => {
         { project: ':A', configuration: 'configuration2', result: 'resultA2' },
         { project: ':B', configuration: 'configuration1', result: 'resultB1' }
       ]
-      const actual = getChecksOutput(diffResults)
-      expect(actual).toEqual({
+      const result = getChecksOutput(diffResults)
+      expect(result).toEqual({
         title: 'Report of gradle-dependency-diff-action',
         summary: `⚠️ Detected that there are differences in the Gradle dependencies.
 - :A
