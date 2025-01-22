@@ -31229,7 +31229,7 @@ var ioExports = requireIo();
 var execExports = requireExec();
 
 async function generateDependenciesFiles(configuration, cwd) {
-    await execExports.getExecOutput('./gradlew', ['clean dependencyReport', '--configuration', configuration], {
+    await execExports.getExecOutput('./gradlew', ['clean', 'dependencyReport', '--configuration', configuration], {
         cwd: cwd
     });
 }

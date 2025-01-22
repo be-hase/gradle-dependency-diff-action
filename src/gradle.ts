@@ -6,7 +6,7 @@ export async function generateDependenciesFiles(
 ): Promise<void> {
   await exec.getExecOutput(
     './gradlew',
-    ['clean dependencyReport', '--configuration', configuration],
+    ['clean', 'dependencyReport', '--configuration', configuration],
     {
       cwd: cwd
     }
