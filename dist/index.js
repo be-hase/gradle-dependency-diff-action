@@ -37075,10 +37075,13 @@ async function reportToCustomEndpoint(endpointUrl, headers, diffResults) {
         return text;
     })
         .join('\n');
-    const headersRecords = headers.reduce((obj, item) => {
-        const [key, value] = item.split(':');
-        obj[key] = value;
-        return obj;
+    const headersRecords = headers.reduce((acc, item) => {
+        const index = item.indexOf(':');
+        if (index !== -1) {
+            const key = item.substring(0, index).trim();
+            acc[key] = item.substring(index + 1).trim();
+        }
+        return acc;
     }, {});
     const res = await fetch(endpointUrl, {
         method: 'post',
