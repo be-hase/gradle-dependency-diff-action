@@ -25,13 +25,9 @@ describe('main.ts', () => {
       expect(result).toEqual({
         root: '/temp',
         baseRepo: '/temp/base-repo',
-        baseDependencies: '/temp/base-dependencies',
-        currentDependencies: '/temp/current-dependencies',
         result: '/temp/result'
       })
       expect(mkdirP).toHaveBeenCalledWith('/temp/base-repo')
-      expect(mkdirP).toHaveBeenCalledWith('/temp/base-dependencies')
-      expect(mkdirP).toHaveBeenCalledWith('/temp/current-dependencies')
       expect(mkdirP).toHaveBeenCalledWith('/temp/result')
     })
   })

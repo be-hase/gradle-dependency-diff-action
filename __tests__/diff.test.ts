@@ -1,18 +1,7 @@
-import {
-  calculateDiff,
-  downloadJar,
-  getConfigurationFromFilePath,
-  getOldFilePath,
-  getProjectFromFilePath,
-  sortDiffResults
-} from '../src/diff'
+import { downloadJar, sortDiffResults } from '../src/diff'
 import path from 'path'
 import { jest } from '@jest/globals'
 import fs from 'fs'
-import { TempDirs } from '../src/types'
-import * as glob from '@actions/glob'
-import * as exec from '@actions/exec'
-import * as io from '@actions/io'
 
 describe('diff.ts', () => {
   beforeEach(() => {
@@ -76,80 +65,6 @@ describe('diff.ts', () => {
     })
   })
 
-  describe('calculateDiff', () => {
-    const globCreate = jest.spyOn(glob, 'create')
-    const existsSync = jest.spyOn(fs, 'existsSync')
-    const getExecOutput = jest.spyOn(exec, 'getExecOutput')
-    const writeFileSync = jest.spyOn(fs, 'writeFileSync')
-    const mkdirP = jest.spyOn(io, 'mkdirP')
-
-    it('success', async () => {
-      const jarPath = '/path/to/jar'
-      const tempDirs: TempDirs = {
-        root: '/temp',
-        baseRepo: '/temp/base-repo',
-        baseDependencies: '/temp/base-dependencies',
-        currentDependencies: '/temp/current-dependencies',
-        result: '/temp/result'
-      }
-
-      const globber = {
-        glob: () =>
-          Promise.resolve([
-            '/temp/current-dependencies/:hoge/configuration.txt',
-            '/temp/current-dependencies/:bar/configuration.txt'
-          ])
-      }
-      globCreate.mockResolvedValueOnce(globber as glob.Globber)
-      existsSync.mockReturnValue(true)
-      getExecOutput.mockResolvedValueOnce({ stdout: '' } as exec.ExecOutput)
-      getExecOutput.mockResolvedValueOnce({
-        stdout: 'stdout'
-      } as exec.ExecOutput)
-      mkdirP.mockResolvedValueOnce()
-      writeFileSync.mockReturnValueOnce()
-
-      const result = await calculateDiff(jarPath, tempDirs)
-
-      expect(globCreate).toHaveBeenCalledWith(
-        '/temp/current-dependencies/**/*.txt'
-      )
-      expect(result).toEqual([
-        {
-          project: ':bar',
-          configuration: 'configuration',
-          result: 'stdout'
-        }
-      ])
-      expect(writeFileSync).toHaveBeenCalledWith(
-        '/temp/result/bar/configuration.txt',
-        'stdout'
-      )
-    })
-    it('empty', async () => {
-      const jarPath = '/path/to/jar'
-      const tempDirs: TempDirs = {
-        root: '/temp',
-        baseRepo: '/temp/base-repo',
-        baseDependencies: '/temp/base-dependencies',
-        currentDependencies: '/temp/current-dependencies',
-        result: '/temp/result'
-      }
-
-      const globber = {
-        glob: () => Promise.resolve([] as string[])
-      }
-      globCreate.mockResolvedValueOnce(globber as glob.Globber)
-
-      const result = await calculateDiff(jarPath, tempDirs)
-
-      expect(globCreate).toHaveBeenCalledWith(
-        '/temp/current-dependencies/**/*.txt'
-      )
-      expect(result).toEqual([])
-    })
-  })
-
   describe('sortDiffResults', () => {
     it('sortDiffResults', () => {
       const result = sortDiffResults([
@@ -168,34 +83,6 @@ describe('diff.ts', () => {
         { project: ':b', configuration: 'a', result: '' },
         { project: ':b', configuration: 'b', result: '' }
       ])
-    })
-  })
-
-  describe('getOldFilePath', () => {
-    it('getOldFilePath', () => {
-      const result = getOldFilePath(
-        path.join('hoge', 'project', 'configuration.txt'),
-        'bar'
-      )
-      expect(result).toEqual(path.join('bar', 'project', 'configuration.txt'))
-    })
-  })
-
-  describe('getProjectFromFilePath', () => {
-    it('getProjectFromFilePath', () => {
-      const result = getProjectFromFilePath(
-        path.join('hoge', 'project', 'configuration.txt')
-      )
-      expect(result).toEqual('project')
-    })
-  })
-
-  describe('getConfigurationFromFilePath', () => {
-    it('getConfigurationFromFilePath', () => {
-      const result = getConfigurationFromFilePath(
-        path.join('hoge', 'project', 'configuration.txt')
-      )
-      expect(result).toEqual('configuration')
     })
   })
 })

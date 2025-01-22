@@ -1,120 +1,15 @@
 import * as exec from '@actions/exec'
-import * as fs from 'node:fs'
-import * as path from 'node:path'
-import * as io from '@actions/io'
-import * as core from '@actions/core'
-import { GradleOptions } from './types.js'
 
 export async function generateDependenciesFiles(
-  gradleOptions: GradleOptions,
-  outDir: string,
-  cwd?: string
-): Promise<void> {
-  const projectsOutput = await execGradleProjects(cwd)
-  let projects = parseGradleProjects(projectsOutput)
-
-  projects = filterGradleProjects(
-    projects,
-    gradleOptions.includeProjectRegex,
-    gradleOptions.excludeProjectRegex
-  )
-  core.info(`[${cwd ? 'base' : 'current'}] Detected projects: ${projects}`)
-
-  const tasks = getDependenciesTasks(projects, gradleOptions.includeRootProject)
-  core.info(`[${cwd ? 'base' : 'current'}] Detected tasks: ${tasks}`)
-
-  const configurations = gradleOptions.configurations
-    .split(',')
-    .map((it) => it.trim())
-
-  for (const task of tasks) {
-    for (const configuration of configurations) {
-      await execDependenciesTask(task, configuration, outDir, cwd)
-    }
-  }
-}
-
-export async function execGradleProjects(cwd?: string): Promise<string> {
-  const output = await exec.getExecOutput('./gradlew', ['projects'], {
-    cwd: cwd,
-    silent: true
-  })
-  return output.stdout
-}
-
-// export for testing
-export function parseGradleProjects(projectsOutput: string): string[] {
-  const regex = /Project '(\S+)'/g
-  const matches: string[] = []
-  let match
-  while ((match = regex.exec(projectsOutput)) !== null) {
-    matches.push(match[1])
-  }
-  return matches
-}
-
-// export for testing
-export function filterGradleProjects(
-  projects: string[],
-  includeProjectRegex: string,
-  excludeProjectRegex: string
-): string[] {
-  let result: string[] = projects
-  if (includeProjectRegex) {
-    const regex = new RegExp(includeProjectRegex)
-    result = result.filter((it) => it.match(regex))
-  }
-  if (excludeProjectRegex) {
-    const regex = new RegExp(excludeProjectRegex)
-    result = result.filter((it) => !it.match(regex))
-  }
-  return result
-}
-
-// export for testing
-export function getDependenciesTasks(
-  projects: string[],
-  includeRootProject: boolean
-): string[] {
-  const tasks = projects.map((it) => `${it}:dependencies`)
-  if (includeRootProject) {
-    return ['dependencies', ...tasks]
-  }
-  return tasks
-}
-
-// export for testing
-export async function execDependenciesTask(
-  task: string,
   configuration: string,
-  outDir: string,
   cwd?: string
 ): Promise<void> {
-  const project = getProjectFromTask(task)
-  await io.mkdirP(path.join(outDir, project))
-
-  core.info(
-    `[${cwd ? 'base' : 'current'}] Executing './gradlew ${task} --configuration-cache --configuration ${configuration}'`
-  )
-  const output = await exec.getExecOutput(
+  await exec.getExecOutput(
     './gradlew',
-    [task, '--configuration-cache', '--configuration', configuration],
-    { cwd: cwd, ignoreReturnCode: true, silent: true }
+    ['clean dependencyReport', '--configuration', configuration],
+    {
+      cwd: cwd,
+      silent: true
+    }
   )
-  if (output.exitCode != 0) {
-    return
-  }
-  fs.writeFileSync(
-    path.join(outDir, project, `${configuration}.txt`),
-    output.stdout
-  )
-}
-
-// export for testing
-export function getProjectFromTask(task: string): string {
-  if (task === 'dependencies') {
-    return 'gradle-root-project'
-  } else {
-    return task.replace(/:dependencies$/, '')
-  }
 }

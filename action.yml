@@ -14,16 +14,6 @@ inputs:
       dependency-tree-diff-version(https://github.com/JakeWharton/dependency-tree-diff).'
     required: false
     default: '1.2.1'
-  include-project-regex:
-    description: 'Filter by projects that match this regular expression.'
-    required: false
-  exclude-project-regex:
-    description: 'Filter by projects that do not match this regular expression.'
-    required: false
-  include-root-project:
-    description: 'Whether to target the root project or not.'
-    required: false
-    default: 'true'
   configurations:
     description: 'Configuration of dependencies (CSV).'
     required: false
