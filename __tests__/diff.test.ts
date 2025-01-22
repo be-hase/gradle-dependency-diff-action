@@ -1,7 +1,16 @@
-import { downloadJar, sortDiffResults } from '../src/diff'
+import {
+  calculateDiffResults,
+  downloadJar,
+  getProjectFromFile,
+  sortDiffResults
+} from '../src/diff'
 import path from 'path'
 import { jest } from '@jest/globals'
 import fs from 'fs'
+import * as glob from '@actions/glob'
+import * as exec from '@actions/exec'
+import * as io from '@actions/io'
+import { TempDirs } from '../src/types'
 
 describe('diff.ts', () => {
   beforeEach(() => {
@@ -65,6 +74,92 @@ describe('diff.ts', () => {
     })
   })
 
+  describe('calculateDiff', () => {
+    const globCreate = jest.spyOn(glob, 'create')
+    const existsSync = jest.spyOn(fs, 'existsSync')
+    const readFileSync = jest.spyOn(fs, 'readFileSync')
+    const getExecOutput = jest.spyOn(exec, 'getExecOutput')
+    const writeFileSync = jest.spyOn(fs, 'writeFileSync')
+    const mkdirP = jest.spyOn(io, 'mkdirP')
+
+    it('success', async () => {
+      const jarPath = '/path/to/jar'
+      const configuration = 'configuration'
+      const tempDirs: TempDirs = {
+        root: '/temp',
+        baseRepo: '/temp/base-repo',
+        result: '/temp/result'
+      }
+
+      const globber = {
+        glob: () =>
+          Promise.resolve([
+            '/temp/work/hoge/build/reports/project/dependencies.txt',
+            '/temp/work/bar/build/reports/project/dependencies.txt',
+            '/temp/work/fuga/build/reports/project/dependencies.txt'
+          ])
+      }
+      globCreate.mockResolvedValueOnce(globber as glob.Globber)
+      existsSync.mockReturnValueOnce(true)
+      existsSync.mockReturnValueOnce(true)
+      existsSync.mockReturnValueOnce(false)
+      readFileSync.mockReturnValueOnce(`Project ':hoge'`)
+      readFileSync.mockReturnValueOnce(`Project ':bar'`)
+      getExecOutput.mockResolvedValueOnce({ stdout: '' } as exec.ExecOutput)
+      getExecOutput.mockResolvedValueOnce({
+        stdout: 'stdout'
+      } as exec.ExecOutput)
+      mkdirP.mockResolvedValueOnce()
+      writeFileSync.mockReturnValueOnce()
+
+      const result = await calculateDiffResults(
+        jarPath,
+        configuration,
+        tempDirs
+      )
+
+      expect(globCreate).toHaveBeenCalledWith(
+        '**/build/reports/project/dependencies.txt'
+      )
+      expect(result).toEqual([
+        {
+          project: ':bar',
+          configuration: configuration,
+          result: 'stdout'
+        }
+      ])
+      expect(writeFileSync).toHaveBeenCalledWith(
+        `/temp/result/bar/${configuration}.txt`,
+        'stdout'
+      )
+    })
+    it('empty', async () => {
+      const jarPath = '/path/to/jar'
+      const configuration = 'configuration'
+      const tempDirs: TempDirs = {
+        root: '/temp',
+        baseRepo: '/temp/base-repo',
+        result: '/temp/result'
+      }
+
+      const globber = {
+        glob: () => Promise.resolve([] as string[])
+      }
+      globCreate.mockResolvedValueOnce(globber as glob.Globber)
+
+      const result = await calculateDiffResults(
+        jarPath,
+        configuration,
+        tempDirs
+      )
+
+      expect(globCreate).toHaveBeenCalledWith(
+        '**/build/reports/project/dependencies.txt'
+      )
+      expect(result).toEqual([])
+    })
+  })
+
   describe('sortDiffResults', () => {
     it('sortDiffResults', () => {
       const result = sortDiffResults([
@@ -83,6 +178,21 @@ describe('diff.ts', () => {
         { project: ':b', configuration: 'a', result: '' },
         { project: ':b', configuration: 'b', result: '' }
       ])
+    })
+  })
+
+  describe('getProjectFromFile', () => {
+    const readFileSync = jest.spyOn(fs, 'readFileSync')
+
+    it('project', () => {
+      readFileSync.mockReturnValueOnce(`Project ':hoge'`)
+      const result = getProjectFromFile('filePath')
+      expect(result).toEqual(':hoge')
+    })
+    it('root project', () => {
+      readFileSync.mockReturnValueOnce(`Root project 'hoge'`)
+      const result = getProjectFromFile('filePath')
+      expect(result).toEqual('hoge')
     })
   })
 })

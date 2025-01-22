@@ -33827,6 +33827,7 @@ async function execDiff(jarPath, configuration, filePath, oldFilePath, resultDir
     }
     return;
 }
+// export for testing
 function getProjectFromFile(filePath) {
     const text = require$$0$2.readFileSync(filePath, 'utf-8');
     const regexps = [/Project '(\S+)'/, /Root project '(\S+)'/];
@@ -37356,6 +37357,7 @@ async function cloneBaseRepository(gitUrl, baseRepoDir) {
         baseRepoDir
     ]);
 }
+// export for testing
 async function calculateDiffResults(jarPath, configurations, tempDirs) {
     const diffResults = [];
     for (const configuration of configurations) {

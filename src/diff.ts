@@ -97,6 +97,7 @@ async function execDiff(
   return
 }
 
+// export for testing
 export function getProjectFromFile(filePath: string): string {
   const text = fs.readFileSync(filePath, 'utf-8')
 

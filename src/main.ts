@@ -144,7 +144,8 @@ export async function cloneBaseRepository(
   ])
 }
 
-async function calculateDiffResults(
+// export for testing
+export async function calculateDiffResults(
   jarPath: string,
   configurations: string[],
   tempDirs: TempDirs
