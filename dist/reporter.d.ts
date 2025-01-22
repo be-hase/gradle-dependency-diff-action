@@ -5,6 +5,7 @@ export declare function getChecksOutput(diffResults: DiffResult[]): {
     summary: string;
     text: string | undefined;
 }[];
+export declare function reportAsCustomEndpoint(endpointUrl: string, headers: string[], diffResults: DiffResult[]): Promise<string[]>;
 export declare function reportAsPrComment(octokitHelper: OctokitHelper, urls: string[], diffResults: DiffResult[]): Promise<void>;
 export declare function reportAsPrBody(octokitHelper: OctokitHelper, urls: string[], diffResults: DiffResult[]): Promise<void>;
 export declare function reportAsLabel(octokitHelper: OctokitHelper, diffResults: DiffResult[], labelName: string): Promise<void>;

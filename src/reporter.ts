@@ -112,6 +112,44 @@ export function getChecksOutput(diffResults: DiffResult[]): {
   return result
 }
 
+export async function reportAsCustomEndpoint(
+  endpointUrl: string,
+  headers: string[],
+  diffResults: DiffResult[]
+) {
+  if (diffResults.length === 0) {
+    return []
+  }
+
+  const markdownText = diffResults
+    .map((diffResult) => {
+      let text = `### ${diffResult.project} - ${diffResult.configuration}\n`
+      text += '```diff\n'
+      text += `${diffResult.result}\n`
+      text += '```'
+      return text
+    })
+    .join('\n')
+
+  const headersRecords = headers.reduce<Record<string, string>>((obj, item) => {
+    const [key, value] = item.split(':')
+    obj[key] = value
+    return obj
+  }, {})
+
+  const res = await fetch(endpointUrl, {
+    method: 'post',
+    headers: {
+      'content-type': 'application/json',
+      ...headersRecords
+    },
+    body: JSON.stringify({ body: markdownText })
+  })
+
+  const json = (await res.json()) as { url: string }
+  return [json.url]
+}
+
 export async function reportAsPrComment(
   octokitHelper: OctokitHelper,
   urls: string[],

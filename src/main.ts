@@ -53,12 +53,22 @@ export async function run(): Promise<void> {
     // calculate diff
     const diffResults = await diff.calculateDiff(jarPath, tempDirs)
 
-    // report
     const octokit = github.getOctokit(inputs.token, {
       baseUrl: github.context.apiUrl
     })
     const octokitHelper = getOctokitHelper(octokit)
-    const urls = await reporter.reportAsChecks(octokitHelper, diffResults)
+
+    // report
+    let urls: string[]
+    if (inputs.customEndpointUrl.length > 0) {
+      urls = await reporter.reportAsCustomEndpoint(
+        inputs.customEndpointUrl,
+        inputs.customEndpointHeaders,
+        diffResults
+      )
+    } else {
+      urls = await reporter.reportAsChecks(octokitHelper, diffResults)
+    }
     if (urls.length !== 0) {
       if (inputs.postPrComment) {
         await reporter.reportAsPrComment(octokitHelper, urls, diffResults)
@@ -93,7 +103,9 @@ function getInputs(): Inputs {
     updatePrBody: core.getBooleanInput('update-pr-body'),
     assignLabel: core.getBooleanInput('assign-label'),
     labelName: core.getInput('label-name'),
-    uploadArtifact: core.getBooleanInput('upload-artifact')
+    uploadArtifact: core.getBooleanInput('upload-artifact'),
+    customEndpointUrl: core.getInput('custom-endpoint-url'),
+    customEndpointHeaders: core.getMultilineInput('custom-endpoint-headers')
   }
 }
 

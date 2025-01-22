@@ -206062,6 +206062,35 @@ function getChecksOutput(diffResults) {
     tryFlush();
     return result;
 }
+async function reportAsCustomEndpoint(endpointUrl, headers, diffResults) {
+    if (diffResults.length === 0) {
+        return [];
+    }
+    const markdownText = diffResults
+        .map((diffResult) => {
+        let text = `### ${diffResult.project} - ${diffResult.configuration}\n`;
+        text += '```diff\n';
+        text += `${diffResult.result}\n`;
+        text += '```';
+        return text;
+    })
+        .join('\n');
+    const headersRecords = headers.reduce((obj, item) => {
+        const [key, value] = item.split(':');
+        obj[key] = value;
+        return obj;
+    }, {});
+    const res = await fetch(endpointUrl, {
+        method: 'post',
+        headers: {
+            'content-type': 'application/json',
+            ...headersRecords
+        },
+        body: JSON.stringify({ body: markdownText })
+    });
+    const json = (await res.json());
+    return [json.url];
+}
 async function reportAsPrComment(octokitHelper, urls, diffResults) {
     const hasDiff = diffResults.length > 0;
     const commentId = await findCommentByTag(octokitHelper, TAG);
@@ -206244,12 +206273,18 @@ async function run() {
         await generateDependenciesFiles(gradleOptions, tempDirs.baseDependencies, tempDirs.baseRepo);
         // calculate diff
         const diffResults = await calculateDiff(jarPath, tempDirs);
-        // report
         const octokit = githubExports.getOctokit(inputs.token, {
             baseUrl: githubExports.context.apiUrl
         });
         const octokitHelper = getOctokitHelper(octokit);
-        const urls = await reportAsChecks(octokitHelper, diffResults);
+        // report
+        let urls;
+        if (inputs.customEndpointUrl.length > 0) {
+            urls = await reportAsCustomEndpoint(inputs.customEndpointUrl, inputs.customEndpointHeaders, diffResults);
+        }
+        else {
+            urls = await reportAsChecks(octokitHelper, diffResults);
+        }
         if (urls.length !== 0) {
             if (inputs.postPrComment) {
                 await reportAsPrComment(octokitHelper, urls, diffResults);
@@ -206284,7 +206319,9 @@ function getInputs() {
         updatePrBody: coreExports.getBooleanInput('update-pr-body'),
         assignLabel: coreExports.getBooleanInput('assign-label'),
         labelName: coreExports.getInput('label-name'),
-        uploadArtifact: coreExports.getBooleanInput('upload-artifact')
+        uploadArtifact: coreExports.getBooleanInput('upload-artifact'),
+        customEndpointUrl: coreExports.getInput('custom-endpoint-url'),
+        customEndpointHeaders: coreExports.getMultilineInput('custom-endpoint-headers')
     };
 }
 function getGradleOptions(inputs) {

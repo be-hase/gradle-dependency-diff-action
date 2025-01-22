@@ -1,6 +1,7 @@
 import {
   getChecksOutput,
   reportAsChecks,
+  reportAsCustomEndpoint,
   reportAsLabel,
   reportAsPrBody,
   reportAsPrComment
@@ -325,6 +326,51 @@ ${'B'.repeat(65400)}
 `
         }
       ])
+    })
+  })
+
+  describe('reportAsCustomEndpoint', () => {
+    const fetch = jest.spyOn(global, 'fetch')
+
+    it('empty', async () => {
+      const result = await reportAsCustomEndpoint('url', ['a:b', 'c:d'], [])
+      expect(result).toEqual([])
+    })
+    it('test', async () => {
+      const diffResults: DiffResult[] = [
+        {
+          project: ':A',
+          configuration: 'configuration',
+          result: 'A'
+        },
+        {
+          project: ':B',
+          configuration: 'configuration',
+          result: 'B'
+        }
+      ]
+
+      const res = {
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            url: 'responseUrl'
+          })
+      }
+      fetch.mockResolvedValueOnce(res as Response)
+
+      const result = await reportAsCustomEndpoint(
+        'url',
+        ['a:b', 'c:d'],
+        diffResults
+      )
+
+      expect(result).toEqual(['responseUrl'])
+      expect(fetch).toHaveBeenCalledWith('url', {
+        method: 'post',
+        headers: { a: 'b', c: 'd', 'content-type': 'application/json' },
+        body: '{"body":"### :A - configuration\\n```diff\\nA\\n```\\n### :B - configuration\\n```diff\\nB\\n```"}'
+      })
     })
   })
 

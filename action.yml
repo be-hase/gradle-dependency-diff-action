@@ -17,11 +17,9 @@ inputs:
   include-project-regex:
     description: 'Filter by projects that match this regular expression.'
     required: false
-    default: ''
   exclude-project-regex:
     description: 'Filter by projects that do not match this regular expression.'
     required: false
-    default: ''
   include-root-project:
     description: 'Whether to target the root project or not.'
     required: false
@@ -56,6 +54,14 @@ inputs:
       artifact.'
     required: false
     default: 'true'
+  custom-endpoint-url:
+    description:
+      'By default, the report is recorded in GitHub checks. If you want to send
+      it to a custom server, please use this option. (TODO: document)'
+    required: false
+  custom-endpoint-headers:
+    description: 'The header used when sending to a custom endpoint.'
+    required: false
 
 runs:
   using: node20

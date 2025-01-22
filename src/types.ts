@@ -15,6 +15,8 @@ export interface Inputs {
   assignLabel: boolean
   labelName: string
   uploadArtifact: boolean
+  customEndpointUrl: string
+  customEndpointHeaders: string[]
 }
 
 export interface GradleOptions {
