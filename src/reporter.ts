@@ -107,50 +107,39 @@ function getCheckOutputText(diffResultsMap: Map<string, DiffResult[]>): string {
 }
 
 export async function reportAsPrComment(
-  octokit: InstanceType<typeof GitHub>,
+  octokitHelper: OctokitHelper,
   checksUrl: string,
   diffResults: DiffResult[]
 ): Promise<void> {
   const hasDiff = diffResults.length > 0
 
-  const commentId = await findCommentByTag(octokit, TAG)
+  const commentId = await findCommentByTag(octokitHelper, TAG)
+  const existComment = commentId !== -1
 
   if (hasDiff) {
     const commentBody = `> [!Note]\n> Detected that there are [differences](${checksUrl}) in the Gradle dependencies.\n${TAG}`
-    if (commentId !== -1) {
+    if (existComment) {
       // exist comment
-      await octokit.rest.issues.updateComment({
-        ...github.context.repo,
-        comment_id: commentId,
-        body: commentBody
-      })
+      await octokitHelper.updateComment(commentId, commentBody)
     } else {
-      await octokit.rest.issues.createComment({
-        ...github.context.repo,
-        issue_number: github.context.issue.number,
-        body: commentBody
-      })
+      await octokitHelper.createComment(
+        github.context.issue.number,
+        commentBody
+      )
     }
   } else {
-    if (commentId !== -1) {
+    if (existComment) {
       // exist comment
-      await octokit.rest.issues.deleteComment({
-        ...github.context.repo,
-        comment_id: commentId
-      })
+      await octokitHelper.deleteComment(commentId)
     }
   }
 }
 
-export async function findCommentByTag(
-  octokit: InstanceType<typeof GitHub>,
+async function findCommentByTag(
+  octokitHelper: OctokitHelper,
   tag: string
 ): Promise<number> {
-  const comments = await octokit.paginate(octokit.rest.issues.listComments, {
-    ...github.context.repo,
-    issue_number: github.context.issue.number,
-    per_page: 100
-  })
+  const comments = await octokitHelper.listComments(github.context.issue.number)
   const comment = comments.find((c) => c?.body?.includes(tag))
   return comment ? comment.id : -1
 }

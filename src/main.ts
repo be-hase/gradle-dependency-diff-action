@@ -59,7 +59,7 @@ export async function run(): Promise<void> {
     const octokitHelper = getOctokitHelper(octokit)
     const checksUrl = await reporter.reportAsChecks(octokit, diffResults)
     if (inputs.postPrComment) {
-      await reporter.reportAsPrComment(octokit, checksUrl, diffResults)
+      await reporter.reportAsPrComment(octokitHelper, checksUrl, diffResults)
     }
     if (inputs.updatePrBody) {
       await reporter.reportAsPrBody(octokitHelper, checksUrl, diffResults)

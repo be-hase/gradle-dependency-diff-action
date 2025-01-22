@@ -1,4 +1,9 @@
-import { getChecksOutput, reportAsLabel, reportAsPrBody } from '../src/reporter'
+import {
+  getChecksOutput,
+  reportAsLabel,
+  reportAsPrBody,
+  reportAsPrComment
+} from '../src/reporter'
 import { DiffResult } from '../src/types'
 import { jest } from '@jest/globals'
 import { OctokitHelper } from '../src/octokitHelper'
@@ -8,6 +13,10 @@ describe('reporter.ts', () => {
   const octokitHelper: jest.Mocked<OctokitHelper> = {
     getPullRequest: jest.fn(),
     updatePullRequest: jest.fn(),
+    listComments: jest.fn(),
+    createComment: jest.fn(),
+    updateComment: jest.fn(),
+    deleteComment: jest.fn(),
     listLabelsOnIssue: jest.fn(),
     addLabels: jest.fn(),
     removeLabel: jest.fn()
@@ -61,6 +70,44 @@ resultB1
 
 `
       })
+    })
+  })
+
+  describe('reportAsPrComment', () => {
+    it('hasDiff && existComment', async () => {
+      octokitHelper.listComments.mockResolvedValueOnce([
+        { id: 10, body: '<!-- gradle-dependency-diff-action -->' } as never
+      ])
+
+      await reportAsPrComment(octokitHelper, 'checksUrl', [{} as DiffResult])
+
+      expect(octokitHelper.updateComment).toHaveBeenCalledWith(
+        10,
+        `> [!Note]
+> Detected that there are [differences](checksUrl) in the Gradle dependencies.
+<!-- gradle-dependency-diff-action -->`
+      )
+    })
+    it('hasDiff && !existComment', async () => {
+      octokitHelper.listComments.mockResolvedValueOnce([])
+
+      await reportAsPrComment(octokitHelper, 'checksUrl', [{} as DiffResult])
+
+      expect(octokitHelper.createComment).toHaveBeenCalledWith(
+        1,
+        `> [!Note]
+> Detected that there are [differences](checksUrl) in the Gradle dependencies.
+<!-- gradle-dependency-diff-action -->`
+      )
+    })
+    it('!hasDiff && existComment', async () => {
+      octokitHelper.listComments.mockResolvedValueOnce([
+        { id: 10, body: '<!-- gradle-dependency-diff-action -->' } as never
+      ])
+
+      await reportAsPrComment(octokitHelper, 'checksUrl', [])
+
+      expect(octokitHelper.deleteComment).toHaveBeenCalledWith(10)
     })
   })
 

@@ -20,6 +20,37 @@ export function getOctokitHelper(octokit: Octokit) {
       })
     },
 
+    async listComments(issueNumber: number) {
+      return await octokit.paginate(octokit.rest.issues.listComments, {
+        ...github.context.repo,
+        issue_number: issueNumber,
+        per_page: 100
+      })
+    },
+
+    async createComment(issueNumber: number, body: string) {
+      return await octokit.rest.issues.createComment({
+        ...github.context.repo,
+        issue_number: issueNumber,
+        body: body
+      })
+    },
+
+    async updateComment(commentId: number, body: string) {
+      return await octokit.rest.issues.updateComment({
+        ...github.context.repo,
+        comment_id: commentId,
+        body: body
+      })
+    },
+
+    async deleteComment(commentId: number) {
+      return await octokit.rest.issues.deleteComment({
+        ...github.context.repo,
+        comment_id: commentId
+      })
+    },
+
     async listLabelsOnIssue(issueNumber: number) {
       return await octokit.paginate(octokit.rest.issues.listLabelsOnIssue, {
         ...github.context.repo,

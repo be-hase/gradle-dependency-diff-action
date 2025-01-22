@@ -33976,43 +33976,29 @@ function getCheckOutputText(diffResultsMap) {
     }
     return text;
 }
-async function reportAsPrComment(octokit, checksUrl, diffResults) {
+async function reportAsPrComment(octokitHelper, checksUrl, diffResults) {
     const hasDiff = diffResults.length > 0;
-    const commentId = await findCommentByTag(octokit, TAG);
+    const commentId = await findCommentByTag(octokitHelper, TAG);
+    const existComment = commentId !== -1;
     if (hasDiff) {
         const commentBody = `> [!Note]\n> Detected that there are [differences](${checksUrl}) in the Gradle dependencies.\n${TAG}`;
-        if (commentId !== -1) {
+        if (existComment) {
             // exist comment
-            await octokit.rest.issues.updateComment({
-                ...githubExports.context.repo,
-                comment_id: commentId,
-                body: commentBody
-            });
+            await octokitHelper.updateComment(commentId, commentBody);
         }
         else {
-            await octokit.rest.issues.createComment({
-                ...githubExports.context.repo,
-                issue_number: githubExports.context.issue.number,
-                body: commentBody
-            });
+            await octokitHelper.createComment(githubExports.context.issue.number, commentBody);
         }
     }
     else {
-        if (commentId !== -1) {
+        if (existComment) {
             // exist comment
-            await octokit.rest.issues.deleteComment({
-                ...githubExports.context.repo,
-                comment_id: commentId
-            });
+            await octokitHelper.deleteComment(commentId);
         }
     }
 }
-async function findCommentByTag(octokit, tag) {
-    const comments = await octokit.paginate(octokit.rest.issues.listComments, {
-        ...githubExports.context.repo,
-        issue_number: githubExports.context.issue.number,
-        per_page: 100
-    });
+async function findCommentByTag(octokitHelper, tag) {
+    const comments = await octokitHelper.listComments(githubExports.context.issue.number);
     const comment = comments.find((c) => c?.body?.includes(tag));
     return comment ? comment.id : -1;
 }
@@ -34071,6 +34057,33 @@ function getOctokitHelper(octokit) {
                 body
             });
         },
+        async listComments(issueNumber) {
+            return await octokit.paginate(octokit.rest.issues.listComments, {
+                ...githubExports.context.repo,
+                issue_number: issueNumber,
+                per_page: 100
+            });
+        },
+        async createComment(issueNumber, body) {
+            return await octokit.rest.issues.createComment({
+                ...githubExports.context.repo,
+                issue_number: issueNumber,
+                body: body
+            });
+        },
+        async updateComment(commentId, body) {
+            return await octokit.rest.issues.updateComment({
+                ...githubExports.context.repo,
+                comment_id: commentId,
+                body: body
+            });
+        },
+        async deleteComment(commentId) {
+            return await octokit.rest.issues.deleteComment({
+                ...githubExports.context.repo,
+                comment_id: commentId
+            });
+        },
         async listLabelsOnIssue(issueNumber) {
             return await octokit.paginate(octokit.rest.issues.listLabelsOnIssue, {
                 ...githubExports.context.repo,
@@ -34123,7 +34136,7 @@ async function run() {
         const octokitHelper = getOctokitHelper(octokit);
         const checksUrl = await reportAsChecks(octokit, diffResults);
         if (inputs.postPrComment) {
-            await reportAsPrComment(octokit, checksUrl, diffResults);
+            await reportAsPrComment(octokitHelper, checksUrl, diffResults);
         }
         if (inputs.updatePrBody) {
             await reportAsPrBody(octokitHelper, checksUrl, diffResults);
