@@ -206139,7 +206139,7 @@ async function reportAsArtifact(resultDir) {
     const globber = await globExports.create(path__default.join(resultDir, '**', '*.txt'));
     const files = await globber.glob();
     const artifact = new artifactExports.DefaultArtifactClient();
-    await artifact.uploadArtifact(CHECKS_NAME, files, resultDir);
+    await artifact.uploadArtifact('gradle-dependency-diff-action-result', files, resultDir);
 }
 
 function getOctokitHelper(octokit) {

@@ -220,5 +220,9 @@ export async function reportAsArtifact(resultDir: string) {
   const files = await globber.glob()
 
   const artifact = new DefaultArtifactClient()
-  await artifact.uploadArtifact(CHECKS_NAME, files, resultDir)
+  await artifact.uploadArtifact(
+    'gradle-dependency-diff-action-result',
+    files,
+    resultDir
+  )
 }
