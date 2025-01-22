@@ -79,12 +79,11 @@ async function execDiff(
   const project = getProjectFromFilePath(filePath)
   const configuration = getConfigurationFromFilePath(filePath)
 
-  const output = await exec.getExecOutput('java', [
-    '-jar',
-    jarPath,
-    oldFilePath,
-    filePath
-  ])
+  const output = await exec.getExecOutput(
+    'java',
+    ['-jar', jarPath, oldFilePath, filePath],
+    { silent: true }
+  )
   if (output.stdout) {
     const projectDir = project.split(':').filter((s) => s !== '')
     const filePath = path.join(
