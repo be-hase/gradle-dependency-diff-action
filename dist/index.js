@@ -37088,7 +37088,9 @@ async function reportToCustomEndpoint(endpointUrl, headers, diffResults) {
         },
         body: JSON.stringify({ body: markdownText })
     });
+    console.log(res.statusText);
     const json = (await res.json());
+    console.log(json);
     return [json.url];
 }
 async function reportToPrComment(octokitHelper, urls, diffResults) {
