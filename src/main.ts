@@ -53,25 +53,35 @@ export async function run(): Promise<void> {
     // calculate diff
     const diffResults = await diff.calculateDiff(jarPath, tempDirs)
 
-    // report
     const octokit = github.getOctokit(inputs.token, {
       baseUrl: github.context.apiUrl
     })
     const octokitHelper = getOctokitHelper(octokit)
-    const urls = await reporter.reportAsChecks(octokitHelper, diffResults)
+
+    // report
+    let urls: string[]
+    if (inputs.customEndpointUrl.length > 0) {
+      urls = await reporter.reportToCustomEndpoint(
+        inputs.customEndpointUrl,
+        inputs.customEndpointHeaders,
+        diffResults
+      )
+    } else {
+      urls = await reporter.reportToChecks(octokitHelper, diffResults)
+    }
     if (urls.length !== 0) {
       if (inputs.postPrComment) {
-        await reporter.reportAsPrComment(octokitHelper, urls, diffResults)
+        await reporter.reportToPrComment(octokitHelper, urls, diffResults)
       }
       if (inputs.updatePrBody) {
-        await reporter.reportAsPrBody(octokitHelper, urls, diffResults)
+        await reporter.reportToPrBody(octokitHelper, urls, diffResults)
       }
     }
     if (inputs.assignLabel) {
-      await reporter.reportAsLabel(octokitHelper, diffResults, inputs.labelName)
+      await reporter.reportToLabel(octokitHelper, diffResults, inputs.labelName)
     }
     if (diffResults.length !== 0 && inputs.uploadArtifact) {
-      await reporter.reportAsArtifact(tempDirs.result)
+      await reporter.reportToArtifact(tempDirs.result)
     }
   } catch (error) {
     // Fail the workflow run if an error occurs
@@ -93,7 +103,9 @@ function getInputs(): Inputs {
     updatePrBody: core.getBooleanInput('update-pr-body'),
     assignLabel: core.getBooleanInput('assign-label'),
     labelName: core.getInput('label-name'),
-    uploadArtifact: core.getBooleanInput('upload-artifact')
+    uploadArtifact: core.getBooleanInput('upload-artifact'),
+    customEndpointUrl: core.getInput('custom-endpoint-url'),
+    customEndpointHeaders: core.getMultilineInput('custom-endpoint-headers')
   }
 }
 
