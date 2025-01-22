@@ -8,10 +8,8 @@ import * as gradle from './gradle.js'
 import * as utils from './utils.js'
 import * as diff from './diff.js'
 import {
-  BASE_DEPENDENCIES_DIR_NAME,
   BASE_REPO_DIR_NAME,
-  CURRENT_DEPENDENCIES_DIR_NAME,
-  GradleOptions,
+  DiffResult,
   Inputs,
   RESULT_DIR_NAME,
   TempDirs
@@ -27,7 +25,9 @@ export async function run(): Promise<void> {
   try {
     // get input values
     const inputs = getInputs()
-    const gradleOptions = getGradleOptions(inputs)
+    const configurations = inputs.configurations
+      .split(',')
+      .map((it) => it.trim())
 
     // create temp directories
     const tempDirs = await createTempDirs()
@@ -39,19 +39,12 @@ export async function run(): Promise<void> {
     // download jar
     const jarPath = await diff.downloadJar(inputs.toolVersion, tempDirs.root)
 
-    // generate dependencies txt
-    await gradle.generateDependenciesFiles(
-      gradleOptions,
-      tempDirs.currentDependencies
-    )
-    await gradle.generateDependenciesFiles(
-      gradleOptions,
-      tempDirs.baseDependencies,
-      tempDirs.baseRepo
-    )
-
     // calculate diff
-    const diffResults = await diff.calculateDiff(jarPath, tempDirs)
+    const diffResults = await calculateDiffResults(
+      jarPath,
+      configurations,
+      tempDirs
+    )
 
     const octokit = github.getOctokit(inputs.token, {
       baseUrl: github.context.apiUrl
@@ -93,9 +86,6 @@ export async function run(): Promise<void> {
 
 function getInputs(): Inputs {
   return {
-    includeProjectRegex: core.getInput('include-project-regex'),
-    excludeProjectRegex: core.getInput('exclude-project-regex'),
-    includeRootProject: core.getBooleanInput('include-root-project'),
     configurations: core.getInput('configurations'),
     token: core.getInput('token'),
     toolVersion: core.getInput('tool-version'),
@@ -109,34 +99,19 @@ function getInputs(): Inputs {
   }
 }
 
-function getGradleOptions(inputs: Inputs): GradleOptions {
-  return {
-    includeProjectRegex: inputs.includeProjectRegex,
-    excludeProjectRegex: inputs.excludeProjectRegex,
-    includeRootProject: inputs.includeRootProject,
-    configurations: inputs.configurations
-  }
-}
-
 // export for testing
 export async function createTempDirs(): Promise<TempDirs> {
   const tempDir = await utils.createTempDirectory()
 
   const baseRepo = path.join(tempDir, BASE_REPO_DIR_NAME)
-  const baseDependencies = path.join(tempDir, BASE_DEPENDENCIES_DIR_NAME)
-  const currentDependencies = path.join(tempDir, CURRENT_DEPENDENCIES_DIR_NAME)
   const result = path.join(tempDir, RESULT_DIR_NAME)
 
   await io.mkdirP(baseRepo)
-  await io.mkdirP(baseDependencies)
-  await io.mkdirP(currentDependencies)
   await io.mkdirP(result)
 
   return {
     root: tempDir,
     baseRepo: baseRepo,
-    baseDependencies: baseDependencies,
-    currentDependencies: currentDependencies,
     result: result
   }
 }
@@ -167,4 +142,24 @@ export async function cloneBaseRepository(
     gitUrl,
     baseRepoDir
   ])
+}
+
+// export for testing
+export async function calculateDiffResults(
+  jarPath: string,
+  configurations: string[],
+  tempDirs: TempDirs
+) {
+  const diffResults: DiffResult[] = []
+  for (const configuration of configurations) {
+    await gradle.generateDependenciesFiles(configuration)
+    await gradle.generateDependenciesFiles(configuration, tempDirs.baseRepo)
+    const configurationDiffResults = await diff.calculateDiffResults(
+      jarPath,
+      configuration,
+      tempDirs
+    )
+    diffResults.push(...configurationDiffResults)
+  }
+  return diff.sortDiffResults(diffResults)
 }

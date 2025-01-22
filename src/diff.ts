@@ -4,6 +4,7 @@ import { DiffResult, TempDirs } from './types.js'
 import * as exec from '@actions/exec'
 import * as glob from '@actions/glob'
 import * as io from '@actions/io'
+import { removePrefix } from './utils.js'
 
 export async function downloadJar(
   version: string,
@@ -23,18 +24,23 @@ export async function downloadJar(
   return jarPath
 }
 
-export async function calculateDiff(
+export async function calculateDiffResults(
   jarPath: string,
+  configuration: string,
   tempDirs: TempDirs
 ): Promise<DiffResult[]> {
   const results: DiffResult[] = []
   const globber = await glob.create(
-    path.join(tempDirs.currentDependencies, '**', '*.txt')
+    path.join('**', 'build', 'reports', 'project', 'dependencies.txt')
   )
   for (const filePath of await globber.glob()) {
-    const oldFilePath = getOldFilePath(filePath, tempDirs.baseDependencies)
+    const oldFilePath = path.join(
+      tempDirs.baseRepo,
+      removePrefix(filePath, process.env.GITHUB_WORKSPACE + path.sep)
+    )
     const result = await execDiff(
       jarPath,
+      configuration,
       filePath,
       oldFilePath,
       tempDirs.result
@@ -43,7 +49,7 @@ export async function calculateDiff(
       results.push(result)
     }
   }
-  return sortDiffResults(results)
+  return results
 }
 
 export function sortDiffResults(results: DiffResult[]) {
@@ -58,16 +64,9 @@ export function sortDiffResults(results: DiffResult[]) {
   })
 }
 
-// export for testing
-export function getOldFilePath(
-  filePath: string,
-  baseDependenciesDir: string
-): string {
-  return path.join(baseDependenciesDir, ...filePath.split(path.sep).slice(-2))
-}
-
 async function execDiff(
   jarPath: string,
+  configuration: string,
   filePath: string,
   oldFilePath: string,
   resultDir: string
@@ -76,8 +75,7 @@ async function execDiff(
     return
   }
 
-  const project = getProjectFromFilePath(filePath)
-  const configuration = getConfigurationFromFilePath(filePath)
+  const project = getProjectFromFile(filePath)
 
   const output = await exec.getExecOutput(
     'java',
@@ -86,11 +84,7 @@ async function execDiff(
   )
   if (output.stdout) {
     const projectDir = project.split(':').filter((s) => s !== '')
-    const filePath = path.join(
-      resultDir,
-      projectDir.join(path.sep),
-      `${configuration}.txt`
-    )
+    const filePath = path.join(resultDir, ...projectDir, `${configuration}.txt`)
     await io.mkdirP(path.dirname(filePath))
     fs.writeFileSync(filePath, output.stdout)
 
@@ -104,11 +98,16 @@ async function execDiff(
 }
 
 // export for testing
-export function getProjectFromFilePath(filePath: string): string {
-  return path.basename(path.dirname(filePath))
-}
+export function getProjectFromFile(filePath: string): string {
+  const text = fs.readFileSync(filePath, 'utf-8')
 
-// export for testing
-export function getConfigurationFromFilePath(filePath: string): string {
-  return path.basename(filePath).replace(/\.txt$/, '')
+  const regexps = [/Project '(\S+)'/, /Root project '(\S+)'/]
+  for (const regexp of regexps) {
+    const matched = text.match(regexp)
+    if (matched) {
+      return matched[1]
+    }
+  }
+
+  throw Error('Invalid dependencies.txt')
 }

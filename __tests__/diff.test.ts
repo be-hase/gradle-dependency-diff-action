@@ -1,18 +1,16 @@
 import {
-  calculateDiff,
+  calculateDiffResults,
   downloadJar,
-  getConfigurationFromFilePath,
-  getOldFilePath,
-  getProjectFromFilePath,
+  getProjectFromFile,
   sortDiffResults
 } from '../src/diff'
 import path from 'path'
 import { jest } from '@jest/globals'
 import fs from 'fs'
-import { TempDirs } from '../src/types'
 import * as glob from '@actions/glob'
 import * as exec from '@actions/exec'
 import * as io from '@actions/io'
+import { TempDirs } from '../src/types'
 
 describe('diff.ts', () => {
   beforeEach(() => {
@@ -79,29 +77,34 @@ describe('diff.ts', () => {
   describe('calculateDiff', () => {
     const globCreate = jest.spyOn(glob, 'create')
     const existsSync = jest.spyOn(fs, 'existsSync')
+    const readFileSync = jest.spyOn(fs, 'readFileSync')
     const getExecOutput = jest.spyOn(exec, 'getExecOutput')
     const writeFileSync = jest.spyOn(fs, 'writeFileSync')
     const mkdirP = jest.spyOn(io, 'mkdirP')
 
     it('success', async () => {
       const jarPath = '/path/to/jar'
+      const configuration = 'configuration'
       const tempDirs: TempDirs = {
         root: '/temp',
         baseRepo: '/temp/base-repo',
-        baseDependencies: '/temp/base-dependencies',
-        currentDependencies: '/temp/current-dependencies',
         result: '/temp/result'
       }
 
       const globber = {
         glob: () =>
           Promise.resolve([
-            '/temp/current-dependencies/:hoge/configuration.txt',
-            '/temp/current-dependencies/:bar/configuration.txt'
+            '/temp/work/hoge/build/reports/project/dependencies.txt',
+            '/temp/work/bar/build/reports/project/dependencies.txt',
+            '/temp/work/fuga/build/reports/project/dependencies.txt'
           ])
       }
       globCreate.mockResolvedValueOnce(globber as glob.Globber)
-      existsSync.mockReturnValue(true)
+      existsSync.mockReturnValueOnce(true)
+      existsSync.mockReturnValueOnce(true)
+      existsSync.mockReturnValueOnce(false)
+      readFileSync.mockReturnValueOnce(`Project ':hoge'`)
+      readFileSync.mockReturnValueOnce(`Project ':bar'`)
       getExecOutput.mockResolvedValueOnce({ stdout: '' } as exec.ExecOutput)
       getExecOutput.mockResolvedValueOnce({
         stdout: 'stdout'
@@ -109,30 +112,33 @@ describe('diff.ts', () => {
       mkdirP.mockResolvedValueOnce()
       writeFileSync.mockReturnValueOnce()
 
-      const result = await calculateDiff(jarPath, tempDirs)
+      const result = await calculateDiffResults(
+        jarPath,
+        configuration,
+        tempDirs
+      )
 
       expect(globCreate).toHaveBeenCalledWith(
-        '/temp/current-dependencies/**/*.txt'
+        '**/build/reports/project/dependencies.txt'
       )
       expect(result).toEqual([
         {
           project: ':bar',
-          configuration: 'configuration',
+          configuration: configuration,
           result: 'stdout'
         }
       ])
       expect(writeFileSync).toHaveBeenCalledWith(
-        '/temp/result/bar/configuration.txt',
+        `/temp/result/bar/${configuration}.txt`,
         'stdout'
       )
     })
     it('empty', async () => {
       const jarPath = '/path/to/jar'
+      const configuration = 'configuration'
       const tempDirs: TempDirs = {
         root: '/temp',
         baseRepo: '/temp/base-repo',
-        baseDependencies: '/temp/base-dependencies',
-        currentDependencies: '/temp/current-dependencies',
         result: '/temp/result'
       }
 
@@ -141,10 +147,14 @@ describe('diff.ts', () => {
       }
       globCreate.mockResolvedValueOnce(globber as glob.Globber)
 
-      const result = await calculateDiff(jarPath, tempDirs)
+      const result = await calculateDiffResults(
+        jarPath,
+        configuration,
+        tempDirs
+      )
 
       expect(globCreate).toHaveBeenCalledWith(
-        '/temp/current-dependencies/**/*.txt'
+        '**/build/reports/project/dependencies.txt'
       )
       expect(result).toEqual([])
     })
@@ -171,31 +181,18 @@ describe('diff.ts', () => {
     })
   })
 
-  describe('getOldFilePath', () => {
-    it('getOldFilePath', () => {
-      const result = getOldFilePath(
-        path.join('hoge', 'project', 'configuration.txt'),
-        'bar'
-      )
-      expect(result).toEqual(path.join('bar', 'project', 'configuration.txt'))
-    })
-  })
+  describe('getProjectFromFile', () => {
+    const readFileSync = jest.spyOn(fs, 'readFileSync')
 
-  describe('getProjectFromFilePath', () => {
-    it('getProjectFromFilePath', () => {
-      const result = getProjectFromFilePath(
-        path.join('hoge', 'project', 'configuration.txt')
-      )
-      expect(result).toEqual('project')
+    it('project', () => {
+      readFileSync.mockReturnValueOnce(`Project ':hoge'`)
+      const result = getProjectFromFile('filePath')
+      expect(result).toEqual(':hoge')
     })
-  })
-
-  describe('getConfigurationFromFilePath', () => {
-    it('getConfigurationFromFilePath', () => {
-      const result = getConfigurationFromFilePath(
-        path.join('hoge', 'project', 'configuration.txt')
-      )
-      expect(result).toEqual('configuration')
+    it('root project', () => {
+      readFileSync.mockReturnValueOnce(`Root project 'hoge'`)
+      const result = getProjectFromFile('filePath')
+      expect(result).toEqual('hoge')
     })
   })
 })

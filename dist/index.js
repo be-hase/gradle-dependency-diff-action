@@ -28,7 +28,6 @@ import require$$6 from 'string_decoder';
 import require$$0$a from 'diagnostics_channel';
 import require$$2$3 from 'child_process';
 import require$$6$1 from 'timers';
-import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
@@ -31229,79 +31228,10 @@ var ioExports = requireIo();
 
 var execExports = requireExec();
 
-async function generateDependenciesFiles(gradleOptions, outDir, cwd) {
-    const projectsOutput = await execGradleProjects(cwd);
-    let projects = parseGradleProjects(projectsOutput);
-    projects = filterGradleProjects(projects, gradleOptions.includeProjectRegex, gradleOptions.excludeProjectRegex);
-    coreExports.info(`[${cwd ? 'base' : 'current'}] Detected projects: ${projects}`);
-    const tasks = getDependenciesTasks(projects, gradleOptions.includeRootProject);
-    coreExports.info(`[${cwd ? 'base' : 'current'}] Detected tasks: ${tasks}`);
-    const configurations = gradleOptions.configurations
-        .split(',')
-        .map((it) => it.trim());
-    for (const task of tasks) {
-        for (const configuration of configurations) {
-            await execDependenciesTask(task, configuration, outDir, cwd);
-        }
-    }
-}
-async function execGradleProjects(cwd) {
-    const output = await execExports.getExecOutput('./gradlew', ['projects'], {
-        cwd: cwd,
-        silent: true
+async function generateDependenciesFiles(configuration, cwd) {
+    await execExports.getExecOutput('./gradlew', ['clean', 'dependencyReport', '--configuration', configuration], {
+        cwd: cwd
     });
-    return output.stdout;
-}
-// export for testing
-function parseGradleProjects(projectsOutput) {
-    const regex = /Project '(\S+)'/g;
-    const matches = [];
-    let match;
-    while ((match = regex.exec(projectsOutput)) !== null) {
-        matches.push(match[1]);
-    }
-    return matches;
-}
-// export for testing
-function filterGradleProjects(projects, includeProjectRegex, excludeProjectRegex) {
-    let result = projects;
-    if (includeProjectRegex) {
-        const regex = new RegExp(includeProjectRegex);
-        result = result.filter((it) => it.match(regex));
-    }
-    if (excludeProjectRegex) {
-        const regex = new RegExp(excludeProjectRegex);
-        result = result.filter((it) => !it.match(regex));
-    }
-    return result;
-}
-// export for testing
-function getDependenciesTasks(projects, includeRootProject) {
-    const tasks = projects.map((it) => `${it}:dependencies`);
-    if (includeRootProject) {
-        return ['dependencies', ...tasks];
-    }
-    return tasks;
-}
-// export for testing
-async function execDependenciesTask(task, configuration, outDir, cwd) {
-    const project = getProjectFromTask(task);
-    await ioExports.mkdirP(path.join(outDir, project));
-    coreExports.info(`[${cwd ? 'base' : 'current'}] Executing './gradlew ${task} --configuration-cache --configuration ${configuration}'`);
-    const output = await execExports.getExecOutput('./gradlew', [task, '--configuration-cache', '--configuration', configuration], { cwd: cwd, ignoreReturnCode: true, silent: true });
-    if (output.exitCode != 0) {
-        return;
-    }
-    fs.writeFileSync(path.join(outDir, project, `${configuration}.txt`), output.stdout);
-}
-// export for testing
-function getProjectFromTask(task) {
-    if (task === 'dependencies') {
-        return 'gradle-root-project';
-    }
-    else {
-        return task.replace(/:dependencies$/, '');
-    }
 }
 
 // From https://github.com/actions/toolkit/blob/c18a7d2f7347ca2fef6a2e455c6842611eb5f5d6/packages/cache/src/internal/cacheUtils.ts
@@ -31327,6 +31257,12 @@ async function createTempDirectory() {
     const dest = path.join(tempDirectory, crypto.randomUUID());
     await ioExports.mkdirP(dest);
     return dest;
+}
+function removePrefix(str, prefix) {
+    if (str.startsWith(prefix)) {
+        return str.slice(prefix.length);
+    }
+    return str;
 }
 
 var glob = {};
@@ -33846,17 +33782,17 @@ async function downloadJar(version, tempDir) {
     require$$0$2.writeFileSync(jarPath, buffer);
     return jarPath;
 }
-async function calculateDiff(jarPath, tempDirs) {
+async function calculateDiffResults$1(jarPath, configuration, tempDirs) {
     const results = [];
-    const globber = await globExports.create(path__default.join(tempDirs.currentDependencies, '**', '*.txt'));
+    const globber = await globExports.create(path__default.join('**', 'build', 'reports', 'project', 'dependencies.txt'));
     for (const filePath of await globber.glob()) {
-        const oldFilePath = getOldFilePath(filePath, tempDirs.baseDependencies);
-        const result = await execDiff(jarPath, filePath, oldFilePath, tempDirs.result);
+        const oldFilePath = path__default.join(tempDirs.baseRepo, removePrefix(filePath, process.env.GITHUB_WORKSPACE + path__default.sep));
+        const result = await execDiff(jarPath, configuration, filePath, oldFilePath, tempDirs.result);
         if (result) {
             results.push(result);
         }
     }
-    return sortDiffResults(results);
+    return results;
 }
 function sortDiffResults(results) {
     return results.sort((a, b) => {
@@ -33872,20 +33808,15 @@ function sortDiffResults(results) {
         }
     });
 }
-// export for testing
-function getOldFilePath(filePath, baseDependenciesDir) {
-    return path__default.join(baseDependenciesDir, ...filePath.split(path__default.sep).slice(-2));
-}
-async function execDiff(jarPath, filePath, oldFilePath, resultDir) {
+async function execDiff(jarPath, configuration, filePath, oldFilePath, resultDir) {
     if (!require$$0$2.existsSync(oldFilePath)) {
         return;
     }
-    const project = getProjectFromFilePath(filePath);
-    const configuration = getConfigurationFromFilePath(filePath);
+    const project = getProjectFromFile(filePath);
     const output = await execExports.getExecOutput('java', ['-jar', jarPath, oldFilePath, filePath], { silent: true });
     if (output.stdout) {
         const projectDir = project.split(':').filter((s) => s !== '');
-        const filePath = path__default.join(resultDir, projectDir.join(path__default.sep), `${configuration}.txt`);
+        const filePath = path__default.join(resultDir, ...projectDir, `${configuration}.txt`);
         await ioExports.mkdirP(path__default.dirname(filePath));
         require$$0$2.writeFileSync(filePath, output.stdout);
         return {
@@ -33897,17 +33828,19 @@ async function execDiff(jarPath, filePath, oldFilePath, resultDir) {
     return;
 }
 // export for testing
-function getProjectFromFilePath(filePath) {
-    return path__default.basename(path__default.dirname(filePath));
-}
-// export for testing
-function getConfigurationFromFilePath(filePath) {
-    return path__default.basename(filePath).replace(/\.txt$/, '');
+function getProjectFromFile(filePath) {
+    const text = require$$0$2.readFileSync(filePath, 'utf-8');
+    const regexps = [/Project '(\S+)'/, /Root project '(\S+)'/];
+    for (const regexp of regexps) {
+        const matched = text.match(regexp);
+        if (matched) {
+            return matched[1];
+        }
+    }
+    throw Error('Invalid dependencies.txt');
 }
 
 const BASE_REPO_DIR_NAME = 'base-repo';
-const BASE_DEPENDENCIES_DIR_NAME = 'base-dependencies';
-const CURRENT_DEPENDENCIES_DIR_NAME = 'current-dependencies';
 const RESULT_DIR_NAME = 'result';
 
 var artifactClient$1 = {};
@@ -37327,7 +37260,9 @@ async function run() {
     try {
         // get input values
         const inputs = getInputs();
-        const gradleOptions = getGradleOptions(inputs);
+        const configurations = inputs.configurations
+            .split(',')
+            .map((it) => it.trim());
         // create temp directories
         const tempDirs = await createTempDirs();
         // clone base repository
@@ -37335,11 +37270,8 @@ async function run() {
         await cloneBaseRepository(gitUrl, tempDirs.baseRepo);
         // download jar
         const jarPath = await downloadJar(inputs.toolVersion, tempDirs.root);
-        // generate dependencies txt
-        await generateDependenciesFiles(gradleOptions, tempDirs.currentDependencies);
-        await generateDependenciesFiles(gradleOptions, tempDirs.baseDependencies, tempDirs.baseRepo);
         // calculate diff
-        const diffResults = await calculateDiff(jarPath, tempDirs);
+        const diffResults = await calculateDiffResults(jarPath, configurations, tempDirs);
         const octokit = githubExports.getOctokit(inputs.token, {
             baseUrl: githubExports.context.apiUrl
         });
@@ -37376,9 +37308,6 @@ async function run() {
 }
 function getInputs() {
     return {
-        includeProjectRegex: coreExports.getInput('include-project-regex'),
-        excludeProjectRegex: coreExports.getInput('exclude-project-regex'),
-        includeRootProject: coreExports.getBooleanInput('include-root-project'),
         configurations: coreExports.getInput('configurations'),
         token: coreExports.getInput('token'),
         toolVersion: coreExports.getInput('tool-version'),
@@ -37391,30 +37320,16 @@ function getInputs() {
         customEndpointHeaders: coreExports.getMultilineInput('custom-endpoint-headers')
     };
 }
-function getGradleOptions(inputs) {
-    return {
-        includeProjectRegex: inputs.includeProjectRegex,
-        excludeProjectRegex: inputs.excludeProjectRegex,
-        includeRootProject: inputs.includeRootProject,
-        configurations: inputs.configurations
-    };
-}
 // export for testing
 async function createTempDirs() {
     const tempDir = await createTempDirectory();
     const baseRepo = path$1.join(tempDir, BASE_REPO_DIR_NAME);
-    const baseDependencies = path$1.join(tempDir, BASE_DEPENDENCIES_DIR_NAME);
-    const currentDependencies = path$1.join(tempDir, CURRENT_DEPENDENCIES_DIR_NAME);
     const result = path$1.join(tempDir, RESULT_DIR_NAME);
     await ioExports.mkdirP(baseRepo);
-    await ioExports.mkdirP(baseDependencies);
-    await ioExports.mkdirP(currentDependencies);
     await ioExports.mkdirP(result);
     return {
         root: tempDir,
         baseRepo: baseRepo,
-        baseDependencies: baseDependencies,
-        currentDependencies: currentDependencies,
         result: result
     };
 }
@@ -37441,6 +37356,17 @@ async function cloneBaseRepository(gitUrl, baseRepoDir) {
         gitUrl,
         baseRepoDir
     ]);
+}
+// export for testing
+async function calculateDiffResults(jarPath, configurations, tempDirs) {
+    const diffResults = [];
+    for (const configuration of configurations) {
+        await generateDependenciesFiles(configuration);
+        await generateDependenciesFiles(configuration, tempDirs.baseRepo);
+        const configurationDiffResults = await calculateDiffResults$1(jarPath, configuration, tempDirs);
+        diffResults.push(...configurationDiffResults);
+    }
+    return sortDiffResults(diffResults);
 }
 
 /**
