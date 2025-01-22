@@ -31258,6 +31258,12 @@ async function createTempDirectory() {
     await ioExports.mkdirP(dest);
     return dest;
 }
+function removePrefix(str, prefix) {
+    if (str.startsWith(prefix)) {
+        return str.slice(prefix.length);
+    }
+    return str;
+}
 
 var glob = {};
 
@@ -33781,20 +33787,12 @@ async function calculateDiffResults$1(jarPath, configuration, tempDirs) {
     const globber = await globExports.create(path__default.join('**', 'build', 'reports', 'project', 'dependencies.txt'));
     for (const filePath of await globber.glob()) {
         const oldFilePath = path__default.join(tempDirs.baseRepo, removePrefix(filePath, process.env.GITHUB_WORKSPACE + path__default.sep));
-        coreExports.info(`filePath ${filePath}`);
-        coreExports.info(`oldFilePath ${oldFilePath}`);
         const result = await execDiff(jarPath, configuration, filePath, oldFilePath, tempDirs.result);
         if (result) {
             results.push(result);
         }
     }
     return results;
-}
-function removePrefix(str, prefix) {
-    if (str.startsWith(prefix)) {
-        return str.slice(prefix.length);
-    }
-    return str;
 }
 function sortDiffResults(results) {
     return results.sort((a, b) => {
@@ -33818,7 +33816,7 @@ async function execDiff(jarPath, configuration, filePath, oldFilePath, resultDir
     const output = await execExports.getExecOutput('java', ['-jar', jarPath, oldFilePath, filePath], { silent: true });
     if (output.stdout) {
         const projectDir = project.split(':').filter((s) => s !== '');
-        const filePath = path__default.join(resultDir, projectDir.join(path__default.sep), `${configuration}.txt`);
+        const filePath = path__default.join(resultDir, ...projectDir, `${configuration}.txt`);
         await ioExports.mkdirP(path__default.dirname(filePath));
         require$$0$2.writeFileSync(filePath, output.stdout);
         return {

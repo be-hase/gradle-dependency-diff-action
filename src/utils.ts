@@ -26,3 +26,10 @@ export async function createTempDirectory(): Promise<string> {
   await io.mkdirP(dest)
   return dest
 }
+
+export function removePrefix(str: string, prefix: string): string {
+  if (str.startsWith(prefix)) {
+    return str.slice(prefix.length)
+  }
+  return str
+}

@@ -4,6 +4,7 @@ import { DiffResult, TempDirs } from './types.js'
 import * as exec from '@actions/exec'
 import * as glob from '@actions/glob'
 import * as io from '@actions/io'
+import { removePrefix } from './utils.js'
 
 export async function downloadJar(
   version: string,
@@ -51,13 +52,6 @@ export async function calculateDiffResults(
   return results
 }
 
-function removePrefix(str: string, prefix: string): string {
-  if (str.startsWith(prefix)) {
-    return str.slice(prefix.length)
-  }
-  return str
-}
-
 export function sortDiffResults(results: DiffResult[]) {
   return results.sort((a, b) => {
     if (a.project === b.project) {
@@ -90,11 +84,7 @@ async function execDiff(
   )
   if (output.stdout) {
     const projectDir = project.split(':').filter((s) => s !== '')
-    const filePath = path.join(
-      resultDir,
-      projectDir.join(path.sep),
-      `${configuration}.txt`
-    )
+    const filePath = path.join(resultDir, ...projectDir, `${configuration}.txt`)
     await io.mkdirP(path.dirname(filePath))
     fs.writeFileSync(filePath, output.stdout)
 
