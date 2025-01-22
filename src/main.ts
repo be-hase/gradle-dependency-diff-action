@@ -16,6 +16,7 @@ import {
   TempDirs
 } from './types.js'
 import * as reporter from './reporter.js'
+import { getOctokitHelper } from './octokitHelper.js'
 
 /**
  * The main function for the action.
@@ -55,15 +56,16 @@ export async function run(): Promise<void> {
     const octokit = github.getOctokit(inputs.token, {
       baseUrl: github.context.apiUrl
     })
+    const octokitHelper = getOctokitHelper(octokit)
     const checksUrl = await reporter.reportAsChecks(octokit, diffResults)
     if (inputs.postPrComment) {
       await reporter.reportAsPrComment(octokit, checksUrl, diffResults)
     }
     if (inputs.updatePrBody) {
-      await reporter.reportAsPrBody(octokit, checksUrl, diffResults)
+      await reporter.reportAsPrBody(octokitHelper, checksUrl, diffResults)
     }
     if (inputs.assignLabel) {
-      await reporter.reportAsLabel(octokit, diffResults, inputs.labelName)
+      await reporter.reportAsLabel(octokitHelper, diffResults, inputs.labelName)
     }
   } catch (error) {
     // Fail the workflow run if an error occurs

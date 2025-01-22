@@ -1,10 +1,24 @@
-import { getChecksOutput } from '../src/reporter'
+import { getChecksOutput, reportAsLabel, reportAsPrBody } from '../src/reporter'
 import { DiffResult } from '../src/types'
 import { jest } from '@jest/globals'
+import { OctokitHelper } from '../src/octokitHelper'
+import * as github from '@actions/github'
 
 describe('reporter.ts', () => {
+  const octokitHelper: jest.Mocked<OctokitHelper> = {
+    getPullRequest: jest.fn(),
+    updatePullRequest: jest.fn(),
+    listLabelsOnIssue: jest.fn(),
+    addLabels: jest.fn(),
+    removeLabel: jest.fn()
+  }
+
   beforeEach(() => {
     jest.clearAllMocks()
+    jest.replaceProperty(github, 'context', {
+      issue: { number: 1 }
+    } as never)
+    process.env.GITHUB_REPOSITORY = 'owner/repo'
   })
 
   describe('getChecksOutput', () => {
@@ -47,6 +61,124 @@ resultB1
 
 `
       })
+    })
+  })
+
+  describe('reportAsPrBody', () => {
+    it('hasDiff && prBodyMatch', async () => {
+      const originalBody = `hogehoge
+
+<!-- gradle-dependency-diff-action -->
+hogehoge
+<!-- gradle-dependency-diff-action -->
+`
+
+      octokitHelper.getPullRequest.mockResolvedValueOnce({
+        data: { body: originalBody }
+      } as never)
+
+      await reportAsPrBody(octokitHelper, 'checksUrl', [{} as DiffResult])
+
+      const updatedBody = `hogehoge
+
+<!-- gradle-dependency-diff-action -->
+> [!Note]
+> Detected that there are [differences](checksUrl) in the Gradle dependencies.
+<!-- gradle-dependency-diff-action -->
+`
+      expect(octokitHelper.updatePullRequest).toHaveBeenCalledWith(
+        1,
+        updatedBody
+      )
+    })
+    it('hasDiff && !prBodyMatch', async () => {
+      const originalBody = 'hogehoge'
+
+      octokitHelper.getPullRequest.mockResolvedValueOnce({
+        data: { body: originalBody }
+      } as never)
+
+      await reportAsPrBody(octokitHelper, 'checksUrl', [{} as DiffResult])
+
+      const updatedBody = `hogehoge
+<!-- gradle-dependency-diff-action -->
+> [!Note]
+> Detected that there are [differences](checksUrl) in the Gradle dependencies.
+<!-- gradle-dependency-diff-action -->
+`
+      expect(octokitHelper.updatePullRequest).toHaveBeenCalledWith(
+        1,
+        updatedBody
+      )
+    })
+    it('!hasDiff && prBody !== originalPrBody', async () => {
+      const originalBody = `hogehoge
+
+<!-- gradle-dependency-diff-action -->
+hogehoge
+<!-- gradle-dependency-diff-action -->
+`
+
+      octokitHelper.getPullRequest.mockResolvedValueOnce({
+        data: { body: originalBody }
+      } as never)
+
+      await reportAsPrBody(octokitHelper, 'checksUrl', [])
+
+      const updatedBody = `hogehoge
+
+
+`
+      expect(octokitHelper.updatePullRequest).toHaveBeenCalledWith(
+        1,
+        updatedBody
+      )
+    })
+    it('!hasDiff && prBody == originalPrBody', async () => {
+      const originalBody = 'hogehoge'
+
+      octokitHelper.getPullRequest.mockResolvedValueOnce({
+        data: { body: originalBody }
+      } as never)
+
+      await reportAsPrBody(octokitHelper, 'checksUrl', [])
+
+      expect(octokitHelper.updatePullRequest).toHaveBeenCalledTimes(0)
+    })
+  })
+
+  describe('reportAsLabel', () => {
+    it('hasDiff && exists', async () => {
+      octokitHelper.listLabelsOnIssue.mockResolvedValueOnce([
+        { name: 'labelName' } as never
+      ])
+
+      await reportAsLabel(octokitHelper, [{} as DiffResult], 'labelName')
+
+      expect(octokitHelper.addLabels).toHaveBeenCalledTimes(0)
+    })
+    it('hasDiff && !exists', async () => {
+      octokitHelper.listLabelsOnIssue.mockResolvedValueOnce([])
+
+      await reportAsLabel(octokitHelper, [{} as DiffResult], 'labelName')
+
+      expect(octokitHelper.addLabels).toHaveBeenCalledWith(1, ['labelName'])
+    })
+    it('!hasDiff && exists', async () => {
+      octokitHelper.listLabelsOnIssue.mockResolvedValueOnce([
+        { name: 'labelName' } as never
+      ])
+
+      await reportAsLabel(octokitHelper, [], 'labelName')
+
+      expect(octokitHelper.removeLabel).toHaveBeenCalledWith(1, 'labelName')
+    })
+    it('!hasDiff && !exists', async () => {
+      octokitHelper.listLabelsOnIssue.mockResolvedValueOnce([])
+
+      await reportAsLabel(octokitHelper, [], 'labelName')
+
+      expect(octokitHelper.removeLabel).toHaveBeenCalledTimes(0)
     })
   })
 })

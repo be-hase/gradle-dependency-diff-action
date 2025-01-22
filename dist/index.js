@@ -33898,6 +33898,7 @@ const CURRENT_DEPENDENCIES_DIR_NAME = 'current-dependencies';
 
 const CHECKS_NAME = 'Report of gradle-dependency-diff-action';
 const TAG = '<!-- gradle-dependency-diff-action -->';
+const PR_BODY_TAG_PATTERN = new RegExp(`${TAG}[\\s\\S]*${TAG}`);
 async function reportAsChecks(octokit, diffResults) {
     const sha = githubExports.context.payload.pull_request.head.sha;
     const conclusion = diffResults.length == 0 ? 'success' : 'neutral';
@@ -33983,8 +33984,7 @@ async function reportAsPrComment(octokit, checksUrl, diffResults) {
         if (commentId !== -1) {
             // exist comment
             await octokit.rest.issues.updateComment({
-                owner: githubExports.context.repo.owner,
-                repo: githubExports.context.repo.repo,
+                ...githubExports.context.repo,
                 comment_id: commentId,
                 body: commentBody
             });
@@ -34016,13 +34016,9 @@ async function findCommentByTag(octokit, tag) {
     const comment = comments.find((c) => c?.body?.includes(tag));
     return comment ? comment.id : -1;
 }
-async function reportAsPrBody(octokit, checksUrl, diffResults) {
+async function reportAsPrBody(octokitHelper, checksUrl, diffResults) {
     const hasDiff = diffResults.length > 0;
-    const tagPattern = new RegExp(`${TAG}[\\s\\S]*${TAG}`);
-    const response = await octokit.rest.pulls.get({
-        ...githubExports.context.repo,
-        pull_number: githubExports.context.issue.number
-    });
+    const response = await octokitHelper.getPullRequest(githubExports.context.issue.number);
     const originalPrBody = response.data.body || '';
     let prBody = originalPrBody;
     if (hasDiff) {
@@ -34030,50 +34026,73 @@ async function reportAsPrBody(octokit, checksUrl, diffResults) {
         message += `> [!Note]\n`;
         message += `> Detected that there are [differences](${checksUrl}) in the Gradle dependencies.\n`;
         message += `${TAG}`;
-        if (prBody.match(tagPattern)) {
-            prBody = prBody.replace(tagPattern, message);
+        if (prBody.match(PR_BODY_TAG_PATTERN)) {
+            prBody = prBody.replace(PR_BODY_TAG_PATTERN, message);
         }
         else {
             prBody += `\n${message}\n`;
         }
     }
     else {
-        prBody = prBody.replace(tagPattern, '');
+        prBody = prBody.replace(PR_BODY_TAG_PATTERN, '');
     }
     if (prBody !== originalPrBody) {
-        await octokit.rest.pulls.update({
-            ...githubExports.context.repo,
-            pull_number: githubExports.context.issue.number,
-            body: prBody
-        });
+        await octokitHelper.updatePullRequest(githubExports.context.issue.number, prBody);
     }
 }
-async function reportAsLabel(octokit, diffResults, labelName) {
+async function reportAsLabel(octokitHelper, diffResults, labelName) {
     const hasDiff = diffResults.length > 0;
-    const labels = await octokit.paginate(octokit.rest.issues.listLabelsOnIssue, {
-        ...githubExports.context.repo,
-        issue_number: githubExports.context.issue.number,
-        per_page: 100
-    });
+    const labels = await octokitHelper.listLabelsOnIssue(githubExports.context.issue.number);
     const exists = !!labels.find((it) => it.name === labelName);
     if (hasDiff) {
         if (!exists) {
-            await octokit.rest.issues.addLabels({
-                ...githubExports.context.repo,
-                issue_number: githubExports.context.issue.number,
-                labels: [labelName]
-            });
+            await octokitHelper.addLabels(githubExports.context.issue.number, [labelName]);
         }
     }
     else {
         if (exists) {
-            await octokit.rest.issues.removeLabel({
-                ...githubExports.context.repo,
-                issue_number: githubExports.context.issue.number,
-                name: labelName
-            });
+            await octokitHelper.removeLabel(githubExports.context.issue.number, labelName);
         }
     }
+}
+
+function getOctokitHelper(octokit) {
+    return {
+        async getPullRequest(pullNumber) {
+            return await octokit.rest.pulls.get({
+                ...githubExports.context.repo,
+                pull_number: pullNumber
+            });
+        },
+        async updatePullRequest(pullNumber, body) {
+            return await octokit.rest.pulls.update({
+                ...githubExports.context.repo,
+                pull_number: pullNumber,
+                body
+            });
+        },
+        async listLabelsOnIssue(issueNumber) {
+            return await octokit.paginate(octokit.rest.issues.listLabelsOnIssue, {
+                ...githubExports.context.repo,
+                issue_number: issueNumber,
+                per_page: 100
+            });
+        },
+        async addLabels(issueNumber, labels) {
+            return await octokit.rest.issues.addLabels({
+                ...githubExports.context.repo,
+                issue_number: issueNumber,
+                labels
+            });
+        },
+        async removeLabel(issueNumber, label) {
+            return await octokit.rest.issues.removeLabel({
+                ...githubExports.context.repo,
+                issue_number: issueNumber,
+                name: label
+            });
+        }
+    };
 }
 
 /**
@@ -34101,15 +34120,16 @@ async function run() {
         const octokit = githubExports.getOctokit(inputs.token, {
             baseUrl: githubExports.context.apiUrl
         });
+        const octokitHelper = getOctokitHelper(octokit);
         const checksUrl = await reportAsChecks(octokit, diffResults);
         if (inputs.postPrComment) {
             await reportAsPrComment(octokit, checksUrl, diffResults);
         }
         if (inputs.updatePrBody) {
-            await reportAsPrBody(octokit, checksUrl, diffResults);
+            await reportAsPrBody(octokitHelper, checksUrl, diffResults);
         }
         if (inputs.assignLabel) {
-            await reportAsLabel(octokit, diffResults, inputs.labelName);
+            await reportAsLabel(octokitHelper, diffResults, inputs.labelName);
         }
     }
     catch (error) {

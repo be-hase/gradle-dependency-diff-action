@@ -60,8 +60,7 @@ describe('main.ts', () => {
       mockExec.mockResolvedValue(0)
       jest.replaceProperty(github, 'context', {
         payload: { pull_request: { base: { ref: 'main' } } }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any)
+      } as never)
 
       await cloneBaseRepository('gitUrl', 'baseRepoDir')
 

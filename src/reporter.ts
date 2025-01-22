@@ -1,9 +1,11 @@
 import { GitHub } from '@actions/github/lib/utils.js'
 import * as github from '@actions/github'
 import { DiffResult } from './types.js'
+import { OctokitHelper } from './octokitHelper.js'
 
 const CHECKS_NAME = 'Report of gradle-dependency-diff-action'
 const TAG = '<!-- gradle-dependency-diff-action -->'
+const PR_BODY_TAG_PATTERN = new RegExp(`${TAG}[\\s\\S]*${TAG}`)
 
 export async function reportAsChecks(
   octokit: InstanceType<typeof GitHub>,
@@ -118,8 +120,7 @@ export async function reportAsPrComment(
     if (commentId !== -1) {
       // exist comment
       await octokit.rest.issues.updateComment({
-        owner: github.context.repo.owner,
-        repo: github.context.repo.repo,
+        ...github.context.repo,
         comment_id: commentId,
         body: commentBody
       })
@@ -155,17 +156,15 @@ export async function findCommentByTag(
 }
 
 export async function reportAsPrBody(
-  octokit: InstanceType<typeof GitHub>,
+  octokitHelper: OctokitHelper,
   checksUrl: string,
   diffResults: DiffResult[]
 ): Promise<void> {
   const hasDiff = diffResults.length > 0
-  const tagPattern = new RegExp(`${TAG}[\\s\\S]*${TAG}`)
 
-  const response = await octokit.rest.pulls.get({
-    ...github.context.repo,
-    pull_number: github.context.issue.number
-  })
+  const response = await octokitHelper.getPullRequest(
+    github.context.issue.number
+  )
   const originalPrBody = response.data.body || ''
   let prBody = originalPrBody
 
@@ -175,53 +174,39 @@ export async function reportAsPrBody(
     message += `> Detected that there are [differences](${checksUrl}) in the Gradle dependencies.\n`
     message += `${TAG}`
 
-    if (prBody.match(tagPattern)) {
-      prBody = prBody.replace(tagPattern, message)
+    if (prBody.match(PR_BODY_TAG_PATTERN)) {
+      prBody = prBody.replace(PR_BODY_TAG_PATTERN, message)
     } else {
       prBody += `\n${message}\n`
     }
   } else {
-    prBody = prBody.replace(tagPattern, '')
+    prBody = prBody.replace(PR_BODY_TAG_PATTERN, '')
   }
 
   if (prBody !== originalPrBody) {
-    await octokit.rest.pulls.update({
-      ...github.context.repo,
-      pull_number: github.context.issue.number,
-      body: prBody
-    })
+    await octokitHelper.updatePullRequest(github.context.issue.number, prBody)
   }
 }
 
 export async function reportAsLabel(
-  octokit: InstanceType<typeof GitHub>,
+  octokitHelper: OctokitHelper,
   diffResults: DiffResult[],
   labelName: string
 ): Promise<void> {
   const hasDiff = diffResults.length > 0
 
-  const labels = await octokit.paginate(octokit.rest.issues.listLabelsOnIssue, {
-    ...github.context.repo,
-    issue_number: github.context.issue.number,
-    per_page: 100
-  })
+  const labels = await octokitHelper.listLabelsOnIssue(
+    github.context.issue.number
+  )
   const exists = !!labels.find((it) => it.name === labelName)
 
   if (hasDiff) {
     if (!exists) {
-      await octokit.rest.issues.addLabels({
-        ...github.context.repo,
-        issue_number: github.context.issue.number,
-        labels: [labelName]
-      })
+      await octokitHelper.addLabels(github.context.issue.number, [labelName])
     }
   } else {
     if (exists) {
-      await octokit.rest.issues.removeLabel({
-        ...github.context.repo,
-        issue_number: github.context.issue.number,
-        name: labelName
-      })
+      await octokitHelper.removeLabel(github.context.issue.number, labelName)
     }
   }
 }
