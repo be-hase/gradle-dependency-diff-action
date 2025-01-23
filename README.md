@@ -30,8 +30,8 @@
 
 ### Apply `project-report` plugin
 
-依存の差分を取得したいprojectに対して、`project-report`
-pluginを適用してください。
+Please apply the project-report plugin to the project where you want to obtain
+the dependency differences.
 
 ```kotlin
 plugins {
