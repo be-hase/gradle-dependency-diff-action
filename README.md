@@ -71,8 +71,6 @@ The appearance of the Checks:
 
 ![screenshot1](docs/screenshot2.png)
 
-Sample URL: https://github.com/be-hase/kuery-client/pull/135
-
 ## Configuration
 
 | Name              | Description                                                                              | Default Value       |
