@@ -37038,7 +37038,7 @@ function getChecksOutput(diffResults) {
     }
     for (const diffResult of diffResults) {
         const summary = `- ${diffResult.project} - ${diffResult.configuration}`;
-        let text = `### ${diffResult.project} - ${diffResult.configuration}\n`;
+        let text = `## ${diffResult.project} - ${diffResult.configuration}\n`;
         text += '```diff\n';
         text += `${diffResult.result}\n`;
         text += '```';
@@ -37049,7 +37049,7 @@ function getChecksOutput(diffResults) {
         else {
             tryFlush();
             if (text.length >= 65535) {
-                text = `### ${diffResult.project} - ${diffResult.configuration}\n`;
+                text = `## ${diffResult.project} - ${diffResult.configuration}\n`;
                 text += '```diff\n';
                 text += `${diffResult.result.substring(0, 65400)}\n`;
                 text += '```\n';
@@ -37068,7 +37068,7 @@ async function reportToCustomEndpoint(endpointUrl, headers, diffResults) {
     }
     const markdownText = diffResults
         .map((diffResult) => {
-        let text = `### ${diffResult.project} - ${diffResult.configuration}\n`;
+        let text = `## ${diffResult.project} - ${diffResult.configuration}\n`;
         text += '```diff\n';
         text += `${diffResult.result}\n`;
         text += '```';
