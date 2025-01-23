@@ -61,7 +61,11 @@ jobs:
 
 ## Report Samples
 
+The appearance of the PR:
+
 ![screenshot1](docs/screenshot1.png)
+
+The appearance of the Checks:
 
 ![screenshot1](docs/screenshot2.png)
 
