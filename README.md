@@ -24,6 +24,8 @@
   - Uploads the dependency differences as a text file to the actions artifact.
 - Supports Gradle multi-project setups.
 
+## Motivation
+
 ## Getting Start
 
 ### Apply `project-report` plugin
@@ -86,7 +88,7 @@ Sample URL: https://github.com/be-hase/kuery-client/pull/135
 
 ## Contribute
 
-```
+```shell
 # Install the dependencies
 npm install
 
