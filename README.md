@@ -12,16 +12,16 @@
   [dependency-tree-diff](https://github.com/JakeWharton/dependency-tree-diff)
   for PRs and reports dependency differences.
 - The dependency differences are reported as GitHub Checks.
-  - Since GitHub Checks have a character limit of 65,535, multiple GitHub Checks
-    will be created if there are many differences.
-  - If the limit is exceeded for a single project, the output will be truncated.
-    In such cases, the full differences can be viewed by downloading the actions
-    artifact.
+    - Since GitHub Checks have a character limit of 65,535, multiple GitHub Checks
+      will be created if there are many differences.
+    - If the limit is exceeded for a single project, the output will be truncated.
+      In such cases, the full differences can be viewed by downloading the actions
+      artifact.
 - When there are dependency differences, the following feedback is provided (can
   be disabled via settings):
-  - Posts the GitHub Checks URL as a PR comment.
-  - Adds a custom label.
-  - Uploads the dependency differences as a text file to the actions artifact.
+    - Posts the GitHub Checks URL as a PR comment.
+    - Adds a custom label.
+    - Uploads the dependency differences as a text file to the actions artifact.
 - Supports Gradle multi-project setups.
 
 ## Motivation
@@ -74,7 +74,7 @@ The appearance of the Checks:
 ## Configuration
 
 | Name              | Description                                                                              | Default Value       |
-| ----------------- | ---------------------------------------------------------------------------------------- | ------------------- |
+|-------------------|------------------------------------------------------------------------------------------|---------------------|
 | `tool-version`    | Version of [dependency-tree-diff](https://github.com/JakeWharton/dependency-tree-diff)   | 1.2.1               |
 | `configurations`  | Target dependency configurations. Multiple values can be specified, separated by commas. | runtimeClasspath    |
 | `post-pr-comment` | If true, posts a PR comment when there are dependency differences.                       | true                |
@@ -99,5 +99,4 @@ npm run bundle
 # ...etc. See package.json
 ```
 
-This template is used as a reference:
-https://github.com/actions/typescript-action
+This [template](https://github.com/actions/typescript-action) is used as a reference.
