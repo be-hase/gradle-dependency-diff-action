@@ -15,35 +15,40 @@ inputs:
     required: false
     default: '1.2.1'
   configurations:
-    description: 'Configuration of dependencies (CSV).'
+    description:
+      'Target dependency configurations. Multiple values can be specified,
+      separated by commas.'
     required: false
     default: 'runtimeClasspath'
-  token:
-    description: 'GitHub token.'
-    required: false
-    default: ${{ github.token }}
   post-pr-comment:
-    description: 'Post a comment when there are dependency differences.'
+    description:
+      'If true, posts a PR comment when there are dependency differences.'
     required: false
     default: 'true'
   update-pr-body:
-    description: 'Update the checks URL in the PR body'
+    description:
+      'If true, updates the PR body when there are dependency differences.'
     required: false
     default: 'false'
   assign-label:
-    description: 'Assign a label when there are dependency differences.'
+    description:
+      'If true, adds a PR label when there are dependency differences.'
     required: false
     default: 'true'
   label-name:
-    description: 'The label name to use when assigning a label.'
+    description: 'Label name used with assign-label.'
     required: false
     default: 'dependencies-change'
   upload-artifact:
     description:
-      'Upload the dependency differences as a text file format to the actions
+      'If true, uploads the dependency differences as a text file to the actions
       artifact.'
     required: false
     default: 'true'
+  token:
+    description: 'Token used by this action.'
+    required: false
+    default: ${{ github.token }}
   custom-endpoint-url:
     description:
       'By default, the report is recorded in GitHub checks. If you want to send
