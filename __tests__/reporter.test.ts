@@ -104,7 +104,7 @@ describe('reporter.ts', () => {
           summary: `Detected that there are differences in the Gradle dependencies.
 - :A - configuration
 `,
-          text: `### :A - configuration
+          text: `## :A - configuration
 \`\`\`diff
 A
 \`\`\`
@@ -120,7 +120,7 @@ A
           summary: `Detected that there are differences in the Gradle dependencies.
 - :B - configuration
 `,
-          text: `### :B - configuration
+          text: `## :B - configuration
 \`\`\`diff
 ${'B'.repeat(65400)}
 \`\`\`
@@ -151,7 +151,7 @@ ${'B'.repeat(65400)}
           summary: `Detected that there are differences in the Gradle dependencies.
 - :A - configuration
 `,
-          text: `### :A - configuration
+          text: `## :A - configuration
 \`\`\`diff
 resultA
 \`\`\`
@@ -173,15 +173,15 @@ resultA
 - :A - configuration2
 - :B - configuration1
 `,
-          text: `### :A - configuration1
+          text: `## :A - configuration1
 \`\`\`diff
 resultA1
 \`\`\`
-### :A - configuration2
+## :A - configuration2
 \`\`\`diff
 resultA2
 \`\`\`
-### :B - configuration1
+## :B - configuration1
 \`\`\`diff
 resultB1
 \`\`\`
@@ -213,7 +213,7 @@ resultB1
           summary: `Detected that there are differences in the Gradle dependencies.
 - :A - configuration
 `,
-          text: `### :A - configuration
+          text: `## :A - configuration
 \`\`\`diff
 ${'A'.repeat(1000)}
 \`\`\`
@@ -223,7 +223,7 @@ ${'A'.repeat(1000)}
           summary: `Detected that there are differences in the Gradle dependencies.
 - :B - configuration
 `,
-          text: `### :B - configuration
+          text: `## :B - configuration
 \`\`\`diff
 ${'B'.repeat(65000)}
 \`\`\`
@@ -233,7 +233,7 @@ ${'B'.repeat(65000)}
           summary: `Detected that there are differences in the Gradle dependencies.
 - :C - configuration
 `,
-          text: `### :C - configuration
+          text: `## :C - configuration
 \`\`\`diff
 ${'C'.repeat(1000)}
 \`\`\`
@@ -266,11 +266,11 @@ ${'C'.repeat(1000)}
 - :A - configuration
 - :B - configuration
 `,
-          text: `### :A - configuration
+          text: `## :A - configuration
 \`\`\`diff
 ${'A'.repeat(300)}
 \`\`\`
-### :B - configuration
+## :B - configuration
 \`\`\`diff
 ${'B'.repeat(65000)}
 \`\`\`
@@ -280,7 +280,7 @@ ${'B'.repeat(65000)}
           summary: `Detected that there are differences in the Gradle dependencies.
 - :C - configuration
 `,
-          text: `### :C - configuration
+          text: `## :C - configuration
 \`\`\`diff
 ${'C'.repeat(300)}
 \`\`\`
@@ -307,7 +307,7 @@ ${'C'.repeat(300)}
           summary: `Detected that there are differences in the Gradle dependencies.
 - :A - configuration
 `,
-          text: `### :A - configuration
+          text: `## :A - configuration
 \`\`\`diff
 ${'A'.repeat(65400)}
 \`\`\`
@@ -318,7 +318,7 @@ ${'A'.repeat(65400)}
           summary: `Detected that there are differences in the Gradle dependencies.
 - :B - configuration
 `,
-          text: `### :B - configuration
+          text: `## :B - configuration
 \`\`\`diff
 ${'B'.repeat(65400)}
 \`\`\`
@@ -369,7 +369,7 @@ ${'B'.repeat(65400)}
       expect(fetch).toHaveBeenCalledWith('url', {
         method: 'post',
         headers: { a: 'b', c: 'd', 'content-type': 'application/json' },
-        body: '{"body":"### :A - configuration\\n```diff\\nA\\n```\\n### :B - configuration\\n```diff\\nB\\n```"}'
+        body: '{"body":"## :A - configuration\\n```diff\\nA\\n```\\n## :B - configuration\\n```diff\\nB\\n```"}'
       })
     })
   })
