@@ -20,11 +20,9 @@
 - When there are dependency differences, the following feedback is provided (can
   be disabled via settings):
   - Posts the GitHub Checks URL as a PR comment.
-  - Adds a custom label.
+  - Adds a PR label.
   - Uploads the dependency differences as a text file to the actions artifact.
 - Supports Gradle multi-project setups.
-
-## Motivation
 
 ## Getting Start
 
