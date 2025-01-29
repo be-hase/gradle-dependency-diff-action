@@ -11,6 +11,7 @@ import { ColorSchemeType } from 'diff2html/lib/types.js'
 const CHECKS_NAME = 'Report of gradle-dependency-diff-action'
 const TAG = '<!-- gradle-dependency-diff-action -->'
 const PR_BODY_TAG_PATTERN = new RegExp(`${TAG}[\\s\\S]*${TAG}`)
+const REPORT_HTML_FILENAME = 'result.html'
 
 export async function reportToChecks(
   octokitHelper: OctokitHelper,
@@ -115,7 +116,10 @@ export function getChecksOutput(diffResults: DiffResult[]): {
   return result
 }
 
-export function generateHtmlReport(diffResults: DiffResult[]) {
+export function generateHtmlReport(
+  diffResults: DiffResult[],
+  resultDir: string
+) {
   if (diffResults.length === 0) {
     return undefined
   }
@@ -135,7 +139,7 @@ export function generateHtmlReport(diffResults: DiffResult[]) {
     drawFileList: false,
     colorScheme: ColorSchemeType.AUTO
   })
-  return `
+  const html = `
 <!doctype html>
 <html lang="en">
 <head>
@@ -170,6 +174,10 @@ ${generated}
 </body>
 </html>
 `
+
+  fs.writeFileSync(path.join(resultDir, REPORT_HTML_FILENAME), html)
+
+  return html
 }
 
 export async function reportToCustomEndpoint(
@@ -309,12 +317,10 @@ export async function reportToLabel(
   }
 }
 
-export async function reportToArtifact(resultDir: string, html: string) {
+export async function reportToArtifact(resultDir: string) {
   const globber = await glob.create(path.join(resultDir, '**', '*.txt'))
   const files = await globber.glob()
-
-  fs.writeFileSync(path.join(resultDir, 'result.html'), html)
-  files.push(path.join(resultDir, 'result.html'))
+  files.push(path.join(resultDir, REPORT_HTML_FILENAME))
 
   const artifactClient = artifact.create()
   await artifactClient.uploadArtifact(

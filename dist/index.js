@@ -39806,6 +39806,7 @@ var typesExports = requireTypes();
 const CHECKS_NAME = 'Report of gradle-dependency-diff-action';
 const TAG = '<!-- gradle-dependency-diff-action -->';
 const PR_BODY_TAG_PATTERN = new RegExp(`${TAG}[\\s\\S]*${TAG}`);
+const REPORT_HTML_FILENAME = 'result.html';
 async function reportToChecks(octokitHelper, diffResults) {
     const sha = githubExports.context.payload.pull_request.head.sha;
     const conclusion = diffResults.length == 0 ? 'success' : 'neutral';
@@ -39887,7 +39888,7 @@ function getChecksOutput(diffResults) {
     tryFlush();
     return result;
 }
-function generateHtmlReport(diffResults) {
+function generateHtmlReport(diffResults, resultDir) {
     if (diffResults.length === 0) {
         return undefined;
     }
@@ -39905,7 +39906,7 @@ function generateHtmlReport(diffResults) {
         drawFileList: false,
         colorScheme: typesExports.ColorSchemeType.AUTO
     });
-    return `
+    const html$1 = `
 <!doctype html>
 <html lang="en">
 <head>
@@ -39940,6 +39941,8 @@ ${generated}
 </body>
 </html>
 `;
+    require$$0$2.writeFileSync(path__default.join(resultDir, REPORT_HTML_FILENAME), html$1);
+    return html$1;
 }
 async function reportToCustomEndpoint(endpointUrl, headers, html) {
     if (!html) {
@@ -40037,11 +40040,10 @@ async function reportToLabel(octokitHelper, diffResults, labelName) {
         }
     }
 }
-async function reportToArtifact(resultDir, html) {
+async function reportToArtifact(resultDir) {
     const globber = await globExports.create(path__default.join(resultDir, '**', '*.txt'));
     const files = await globber.glob();
-    require$$0$2.writeFileSync(path__default.join(resultDir, 'result.html'), html);
-    files.push(path__default.join(resultDir, 'result.html'));
+    files.push(path__default.join(resultDir, REPORT_HTML_FILENAME));
     const artifactClient = artifactClientExports.create();
     await artifactClient.uploadArtifact('gradle-dependency-diff-action-result', files, resultDir);
 }
@@ -40147,7 +40149,7 @@ async function run() {
         const jarPath = await downloadJar(inputs.toolVersion, tempDirs.root);
         // calculate diff
         const diffResults = await calculateDiffResults(jarPath, configurations, tempDirs);
-        const html = generateHtmlReport(diffResults);
+        const html = generateHtmlReport(diffResults, tempDirs.result);
         const octokit = githubExports.getOctokit(inputs.token, {
             baseUrl: githubExports.context.apiUrl
         });
@@ -40172,7 +40174,7 @@ async function run() {
             await reportToLabel(octokitHelper, diffResults, inputs.labelName);
         }
         if (diffResults.length !== 0 && inputs.uploadArtifact) {
-            await reportToArtifact(tempDirs.result, html);
+            await reportToArtifact(tempDirs.result);
         }
     }
     catch (error) {

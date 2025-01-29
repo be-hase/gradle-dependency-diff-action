@@ -12,6 +12,7 @@ import { jest } from '@jest/globals'
 import { OctokitHelper } from '../src/octokitHelper'
 import * as github from '@actions/github'
 import * as Diff2html from 'diff2html'
+import fs from 'fs'
 
 describe('reporter.ts', () => {
   const octokitHelper: jest.Mocked<OctokitHelper> = {
@@ -333,9 +334,10 @@ ${'B'.repeat(65400)}
 
   describe('generateHtmlReport', () => {
     const html = jest.spyOn(Diff2html, 'html')
+    const writeFileSync = jest.spyOn(fs, 'writeFileSync')
 
     it('empty', async () => {
-      const result = generateHtmlReport([])
+      const result = generateHtmlReport([], '/temp/result')
       expect(result).toEqual(undefined)
     })
     it('test', async () => {
@@ -351,8 +353,9 @@ ${'B'.repeat(65400)}
           result: '-hoge\n+bar'
         }
       ]
+      writeFileSync.mockReturnValueOnce()
 
-      const result = generateHtmlReport(diffResults)
+      const result = generateHtmlReport(diffResults, '/temp/result')
 
       expect(result).toContain('div class')
       expect(html).toHaveBeenCalledWith(
