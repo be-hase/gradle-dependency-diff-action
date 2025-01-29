@@ -132,7 +132,6 @@ export function generateHtmlReport(diffResults: DiffResult[]) {
 
   const generated = Diff2html.html(diffInput, {
     outputFormat: 'side-by-side',
-    drawFileList: true,
     colorScheme: ColorSchemeType.AUTO
   })
   return `

@@ -39902,7 +39902,6 @@ function generateHtmlReport(diffResults) {
         .join('');
     const generated = html(diffInput, {
         outputFormat: 'side-by-side',
-        drawFileList: true,
         colorScheme: typesExports.ColorSchemeType.AUTO
     });
     return `
