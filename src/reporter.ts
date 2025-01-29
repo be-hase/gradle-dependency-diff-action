@@ -4,10 +4,14 @@ import { OctokitHelper } from './octokitHelper.js'
 import * as artifact from '@actions/artifact'
 import * as glob from '@actions/glob'
 import path from 'path'
+import * as Diff2html from 'diff2html'
+import fs from 'fs'
+import { ColorSchemeType } from 'diff2html/lib/types.js'
 
 const CHECKS_NAME = 'Report of gradle-dependency-diff-action'
 const TAG = '<!-- gradle-dependency-diff-action -->'
 const PR_BODY_TAG_PATTERN = new RegExp(`${TAG}[\\s\\S]*${TAG}`)
+const REPORT_HTML_FILENAME = 'result.html'
 
 export async function reportToChecks(
   octokitHelper: OctokitHelper,
@@ -112,24 +116,78 @@ export function getChecksOutput(diffResults: DiffResult[]): {
   return result
 }
 
+export function generateHtmlReport(
+  diffResults: DiffResult[],
+  resultDir: string
+) {
+  if (diffResults.length === 0) {
+    return undefined
+  }
+
+  const diffInput = diffResults
+    .map((diffResult) => {
+      let text = `--- a/${diffResult.project} - ${diffResult.configuration}\n`
+      text += `+++ b/${diffResult.project} - ${diffResult.configuration}\n`
+      text += `@@ -1 +1 @@\n`
+      text += `${diffResult.result}\n`
+      return text
+    })
+    .join('')
+
+  const generated = Diff2html.html(diffInput, {
+    outputFormat: 'side-by-side',
+    drawFileList: false,
+    colorScheme: ColorSchemeType.AUTO
+  })
+  const html = `
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Report of gradle-dependency-diff-action</title>
+  <style>
+  @media screen and (prefers-color-scheme: light) {
+    body {
+      background-color: var(--d2h-bg-color);
+    }
+    h1 {
+      color: var(--d2h-light-color);
+    }
+  }
+  @media screen and (prefers-color-scheme: dark) {
+    body {
+      background-color: rgb(13, 17, 23);
+    }
+    h1 {
+      color: var(--d2h-dark-color);
+    }
+  }
+  </style>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/diff2html@3.4.51/bundles/css/diff2html.min.css" integrity="sha384-iBvSlI3tNrrSIy7s6mvLg+5B2Z/QXbR4L0Pzg1nRf8zkXrz5JF316MLm2igMIpi2" crossorigin="anonymous">
+</head>
+<body style="text-align: center; font-family: 'Source Sans Pro', sans-serif">
+<h1>Report of gradle-dependency-diff-action</h1>
+<div id="diff">
+${generated}
+</div>
+<script src="https://cdn.jsdelivr.net/npm/diff2html@3.4.51/bundles/js/diff2html.min.js" integrity="sha384-ZvelNss0+pIzgOtutzNTd5k1ty3TFmOx0nGsDzK7gyTyhqnzM957JzY6lWy9qoZg" crossorigin="anonymous"></script>
+</body>
+</html>
+`
+
+  fs.writeFileSync(path.join(resultDir, REPORT_HTML_FILENAME), html)
+
+  return html
+}
+
 export async function reportToCustomEndpoint(
   endpointUrl: string,
   headers: string[],
-  diffResults: DiffResult[]
+  html: string | undefined
 ) {
-  if (diffResults.length === 0) {
+  if (!html) {
     return []
   }
-
-  const markdownText = diffResults
-    .map((diffResult) => {
-      let text = `## ${diffResult.project} - ${diffResult.configuration}\n`
-      text += '```diff\n'
-      text += `${diffResult.result}\n`
-      text += '```'
-      return text
-    })
-    .join('\n')
 
   const headersRecords = headers.reduce(
     (acc, item) => {
@@ -146,10 +204,10 @@ export async function reportToCustomEndpoint(
   const res = await fetch(endpointUrl, {
     method: 'post',
     headers: {
-      'content-type': 'application/json',
+      'content-type': 'text/html',
       ...headersRecords
     },
-    body: JSON.stringify({ body: markdownText })
+    body: html
   })
 
   const json = (await res.json()) as { url: string }
@@ -262,6 +320,7 @@ export async function reportToLabel(
 export async function reportToArtifact(resultDir: string) {
   const globber = await glob.create(path.join(resultDir, '**', '*.txt'))
   const files = await globber.glob()
+  files.push(path.join(resultDir, REPORT_HTML_FILENAME))
 
   const artifactClient = artifact.create()
   await artifactClient.uploadArtifact(

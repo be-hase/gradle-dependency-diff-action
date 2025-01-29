@@ -1,4 +1,5 @@
 import {
+  generateHtmlReport,
   getChecksOutput,
   reportToChecks,
   reportToCustomEndpoint,
@@ -10,6 +11,8 @@ import { DiffResult } from '../src/types'
 import { jest } from '@jest/globals'
 import { OctokitHelper } from '../src/octokitHelper'
 import * as github from '@actions/github'
+import * as Diff2html from 'diff2html'
+import fs from 'fs'
 
 describe('reporter.ts', () => {
   const octokitHelper: jest.Mocked<OctokitHelper> = {
@@ -329,27 +332,65 @@ ${'B'.repeat(65400)}
     })
   })
 
-  describe('reportAsCustomEndpoint', () => {
-    const fetch = jest.spyOn(global, 'fetch')
+  describe('generateHtmlReport', () => {
+    const html = jest.spyOn(Diff2html, 'html')
+    const writeFileSync = jest.spyOn(fs, 'writeFileSync')
 
     it('empty', async () => {
-      const result = await reportToCustomEndpoint('url', ['a:b', 'c:d'], [])
-      expect(result).toEqual([])
+      const result = generateHtmlReport([], '/temp/result')
+      expect(result).toEqual(undefined)
     })
     it('test', async () => {
       const diffResults: DiffResult[] = [
         {
           project: ':A',
           configuration: 'configuration',
-          result: 'A'
+          result: '-hoge\n+bar'
         },
         {
           project: ':B',
           configuration: 'configuration',
-          result: 'B'
+          result: '-hoge\n+bar'
         }
       ]
+      writeFileSync.mockReturnValueOnce()
 
+      const result = generateHtmlReport(diffResults, '/temp/result')
+
+      expect(result).toContain('div class')
+      expect(html).toHaveBeenCalledWith(
+        `--- a/:A - configuration
++++ b/:A - configuration
+@@ -1 +1 @@
+-hoge
++bar
+--- a/:B - configuration
++++ b/:B - configuration
+@@ -1 +1 @@
+-hoge
++bar
+`,
+        {
+          colorScheme: 'auto',
+          drawFileList: false,
+          outputFormat: 'side-by-side'
+        }
+      )
+    })
+  })
+
+  describe('reportAsCustomEndpoint', () => {
+    const fetch = jest.spyOn(global, 'fetch')
+
+    it('undefined', async () => {
+      const result = await reportToCustomEndpoint(
+        'url',
+        ['a:b', 'c:d'],
+        undefined
+      )
+      expect(result).toEqual([])
+    })
+    it('test', async () => {
       const res = {
         ok: true,
         json: () =>
@@ -359,17 +400,13 @@ ${'B'.repeat(65400)}
       }
       fetch.mockResolvedValueOnce(res as Response)
 
-      const result = await reportToCustomEndpoint(
-        'url',
-        ['a:b', 'c:d'],
-        diffResults
-      )
+      const result = await reportToCustomEndpoint('url', ['a:b', 'c:d'], 'html')
 
       expect(result).toEqual(['responseUrl'])
       expect(fetch).toHaveBeenCalledWith('url', {
         method: 'post',
-        headers: { a: 'b', c: 'd', 'content-type': 'application/json' },
-        body: '{"body":"## :A - configuration\\n```diff\\nA\\n```\\n## :B - configuration\\n```diff\\nB\\n```"}'
+        headers: { a: 'b', c: 'd', 'content-type': 'text/html' },
+        body: 'html'
       })
     })
   })

@@ -52,7 +52,8 @@ inputs:
   custom-endpoint-url:
     description:
       'By default, the report is recorded in GitHub checks. If you want to send
-      it to a custom server, please use this option. (TODO: document)'
+      it to a custom server, please use this option. This feature is
+      experimental and may change without notice.'
     required: false
   custom-endpoint-headers:
     description: 'The header used when sending to a custom endpoint.'

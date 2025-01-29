@@ -45,6 +45,7 @@ export async function run(): Promise<void> {
       configurations,
       tempDirs
     )
+    const html = reporter.generateHtmlReport(diffResults, tempDirs.result)
 
     const octokit = github.getOctokit(inputs.token, {
       baseUrl: github.context.apiUrl
@@ -57,7 +58,7 @@ export async function run(): Promise<void> {
       urls = await reporter.reportToCustomEndpoint(
         inputs.customEndpointUrl,
         inputs.customEndpointHeaders,
-        diffResults
+        html
       )
     } else {
       urls = await reporter.reportToChecks(octokitHelper, diffResults)
