@@ -40160,13 +40160,11 @@ async function run() {
         else {
             urls = await reportToChecks(octokitHelper, diffResults);
         }
-        if (urls.length !== 0) {
-            if (inputs.postPrComment) {
-                await reportToPrComment(octokitHelper, urls, diffResults);
-            }
-            if (inputs.updatePrBody) {
-                await reportToPrBody(octokitHelper, urls, diffResults);
-            }
+        if (inputs.postPrComment) {
+            await reportToPrComment(octokitHelper, urls, diffResults);
+        }
+        if (inputs.updatePrBody) {
+            await reportToPrBody(octokitHelper, urls, diffResults);
         }
         if (inputs.assignLabel) {
             await reportToLabel(octokitHelper, diffResults, inputs.labelName);
