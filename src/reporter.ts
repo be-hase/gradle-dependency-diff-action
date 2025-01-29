@@ -159,14 +159,14 @@ export function generateHtmlReport(diffResults: DiffResult[]) {
     }
   }
   </style>
-  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/diff2html@3.4.51/bundles/css/diff2html.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/diff2html@3.4.51/bundles/css/diff2html.min.css" integrity="sha384-iBvSlI3tNrrSIy7s6mvLg+5B2Z/QXbR4L0Pzg1nRf8zkXrz5JF316MLm2igMIpi2" crossorigin="anonymous">
 </head>
 <body style="text-align: center; font-family: 'Source Sans Pro', sans-serif">
 <h1>Report of gradle-dependency-diff-action</h1>
 <div id="diff">
 ${generated}
 </div>
-<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/diff2html@3.4.51/bundles/js/diff2html.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/diff2html@3.4.51/bundles/js/diff2html.min.js" integrity="sha384-ZvelNss0+pIzgOtutzNTd5k1ty3TFmOx0nGsDzK7gyTyhqnzM957JzY6lWy9qoZg" crossorigin="anonymous"></script>
 </body>
 </html>
 `
