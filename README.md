@@ -82,6 +82,16 @@ The appearance of the Checks:
 | `upload-artifact` | If true, uploads the dependency differences as a text file to the actions artifact.      | true                |
 | `token`           | Token used by this action.                                                               | ${{ github.token }} |
 
+## FAQ
+
+<details>
+<summary>The error `Task 'dependencyReport' not found in root project 'xxx' and its subprojects` has occurred.</summary>
+
+The project-report plugin may not be applied to the base branch of the Pull
+Request.
+
+</details>
+
 ## Contribute
 
 ```shell
