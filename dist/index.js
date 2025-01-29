@@ -21703,11 +21703,11 @@ function requireUtil$1 () {
 	return util$1;
 }
 
-var parse$1;
+var parse$2;
 var hasRequiredParse;
 
 function requireParse () {
-	if (hasRequiredParse) return parse$1;
+	if (hasRequiredParse) return parse$2;
 	hasRequiredParse = 1;
 
 	const { maxNameValuePairSize, maxAttributeValueSize } = requireConstants$1();
@@ -22021,11 +22021,11 @@ function requireParse () {
 	  return parseUnparsedAttributes(unparsedAttributes, cookieAttributeList)
 	}
 
-	parse$1 = {
+	parse$2 = {
 	  parseSetCookie,
 	  parseUnparsedAttributes
 	};
-	return parse$1;
+	return parse$2;
 }
 
 var cookies;
@@ -27868,7 +27868,7 @@ function expand(template, context) {
   }
 }
 
-function parse(options) {
+function parse$1(options) {
   let method = options.method.toUpperCase();
   let url = (options.url || "/").replace(/:([a-z]\w+)/g, "{$1}");
   let headers = Object.assign({}, options.headers);
@@ -27933,7 +27933,7 @@ function parse(options) {
 }
 
 function endpointWithDefaults(defaults, route, options) {
-  return parse(merge(defaults, route, options));
+  return parse$1(merge(defaults, route, options));
 }
 
 function withDefaults$2(oldDefaults, newDefaults) {
@@ -27943,7 +27943,7 @@ function withDefaults$2(oldDefaults, newDefaults) {
     DEFAULTS,
     defaults: withDefaults$2.bind(null, DEFAULTS),
     merge: merge.bind(null, DEFAULTS),
-    parse
+    parse: parse$1
   });
 }
 
@@ -31258,7 +31258,7 @@ async function createTempDirectory() {
     await ioExports.mkdirP(dest);
     return dest;
 }
-function removePrefix(str, prefix) {
+function removePrefix$1(str, prefix) {
     if (str.startsWith(prefix)) {
         return str.slice(prefix.length);
     }
@@ -33786,7 +33786,7 @@ async function calculateDiffResults$1(jarPath, configuration, tempDirs) {
     const results = [];
     const globber = await globExports.create(path__default.join('**', 'build', 'reports', 'project', 'dependencies.txt'));
     for (const filePath of await globber.glob()) {
-        const oldFilePath = path__default.join(tempDirs.baseRepo, removePrefix(filePath, process.env.GITHUB_WORKSPACE + path__default.sep));
+        const oldFilePath = path__default.join(tempDirs.baseRepo, removePrefix$1(filePath, process.env.GITHUB_WORKSPACE + path__default.sep));
         const result = await execDiff(jarPath, configuration, filePath, oldFilePath, tempDirs.result);
         if (result) {
             results.push(result);
@@ -36978,6 +36978,2831 @@ function requireArtifactClient () {
 
 var artifactClientExports = requireArtifactClient();
 
+var LineType;
+(function (LineType) {
+    LineType["INSERT"] = "insert";
+    LineType["DELETE"] = "delete";
+    LineType["CONTEXT"] = "context";
+})(LineType || (LineType = {}));
+const OutputFormatType = {
+    LINE_BY_LINE: 'line-by-line',
+    SIDE_BY_SIDE: 'side-by-side',
+};
+const LineMatchingType = {
+    LINES: 'lines',
+    WORDS: 'words',
+    NONE: 'none',
+};
+const DiffStyleType = {
+    WORD: 'word',
+    CHAR: 'char',
+};
+var ColorSchemeType;
+(function (ColorSchemeType) {
+    ColorSchemeType["AUTO"] = "auto";
+    ColorSchemeType["DARK"] = "dark";
+    ColorSchemeType["LIGHT"] = "light";
+})(ColorSchemeType || (ColorSchemeType = {}));
+
+const specials = [
+    '-',
+    '[',
+    ']',
+    '/',
+    '{',
+    '}',
+    '(',
+    ')',
+    '*',
+    '+',
+    '?',
+    '.',
+    '\\',
+    '^',
+    '$',
+    '|',
+];
+const regex = RegExp('[' + specials.join('\\') + ']', 'g');
+function escapeForRegExp(str) {
+    return str.replace(regex, '\\$&');
+}
+function unifyPath(path) {
+    return path ? path.replace(/\\/g, '/') : path;
+}
+function hashCode(text) {
+    let i, chr, len;
+    let hash = 0;
+    for (i = 0, len = text.length; i < len; i++) {
+        chr = text.charCodeAt(i);
+        hash = (hash << 5) - hash + chr;
+        hash |= 0;
+    }
+    return hash;
+}
+
+function getExtension(filename, language) {
+    const filenameParts = filename.split('.');
+    return filenameParts.length > 1 ? filenameParts[filenameParts.length - 1] : language;
+}
+function startsWithAny(str, prefixes) {
+    return prefixes.reduce((startsWith, prefix) => startsWith || str.startsWith(prefix), false);
+}
+const baseDiffFilenamePrefixes = ['a/', 'b/', 'i/', 'w/', 'c/', 'o/'];
+function getFilename(line, linePrefix, extraPrefix) {
+    const prefixes = extraPrefix !== undefined ? [...baseDiffFilenamePrefixes, extraPrefix] : baseDiffFilenamePrefixes;
+    const FilenameRegExp = linePrefix
+        ? new RegExp(`^${escapeForRegExp(linePrefix)} "?(.+?)"?$`)
+        : new RegExp('^"?(.+?)"?$');
+    const [, filename = ''] = FilenameRegExp.exec(line) || [];
+    const matchingPrefix = prefixes.find(p => filename.indexOf(p) === 0);
+    const fnameWithoutPrefix = matchingPrefix ? filename.slice(matchingPrefix.length) : filename;
+    return fnameWithoutPrefix.replace(/\s+\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)? [+-]\d{4}.*$/, '');
+}
+function getSrcFilename(line, srcPrefix) {
+    return getFilename(line, '---', srcPrefix);
+}
+function getDstFilename(line, dstPrefix) {
+    return getFilename(line, '+++', dstPrefix);
+}
+function parse(diffInput, config = {}) {
+    const files = [];
+    let currentFile = null;
+    let currentBlock = null;
+    let oldLine = null;
+    let oldLine2 = null;
+    let newLine = null;
+    let possibleOldName = null;
+    let possibleNewName = null;
+    const oldFileNameHeader = '--- ';
+    const newFileNameHeader = '+++ ';
+    const hunkHeaderPrefix = '@@';
+    const oldMode = /^old mode (\d{6})/;
+    const newMode = /^new mode (\d{6})/;
+    const deletedFileMode = /^deleted file mode (\d{6})/;
+    const newFileMode = /^new file mode (\d{6})/;
+    const copyFrom = /^copy from "?(.+)"?/;
+    const copyTo = /^copy to "?(.+)"?/;
+    const renameFrom = /^rename from "?(.+)"?/;
+    const renameTo = /^rename to "?(.+)"?/;
+    const similarityIndex = /^similarity index (\d+)%/;
+    const dissimilarityIndex = /^dissimilarity index (\d+)%/;
+    const index = /^index ([\da-z]+)\.\.([\da-z]+)\s*(\d{6})?/;
+    const binaryFiles = /^Binary files (.*) and (.*) differ/;
+    const binaryDiff = /^GIT binary patch/;
+    const combinedIndex = /^index ([\da-z]+),([\da-z]+)\.\.([\da-z]+)/;
+    const combinedMode = /^mode (\d{6}),(\d{6})\.\.(\d{6})/;
+    const combinedNewFile = /^new file mode (\d{6})/;
+    const combinedDeletedFile = /^deleted file mode (\d{6}),(\d{6})/;
+    const diffLines = diffInput
+        .replace(/\\ No newline at end of file/g, '')
+        .replace(/\r\n?/g, '\n')
+        .split('\n');
+    function saveBlock() {
+        if (currentBlock !== null && currentFile !== null) {
+            currentFile.blocks.push(currentBlock);
+            currentBlock = null;
+        }
+    }
+    function saveFile() {
+        if (currentFile !== null) {
+            if (!currentFile.oldName && possibleOldName !== null) {
+                currentFile.oldName = possibleOldName;
+            }
+            if (!currentFile.newName && possibleNewName !== null) {
+                currentFile.newName = possibleNewName;
+            }
+            if (currentFile.newName) {
+                files.push(currentFile);
+                currentFile = null;
+            }
+        }
+        possibleOldName = null;
+        possibleNewName = null;
+    }
+    function startFile() {
+        saveBlock();
+        saveFile();
+        currentFile = {
+            blocks: [],
+            deletedLines: 0,
+            addedLines: 0,
+        };
+    }
+    function startBlock(line) {
+        saveBlock();
+        let values;
+        if (currentFile !== null) {
+            if ((values = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@.*/.exec(line))) {
+                currentFile.isCombined = false;
+                oldLine = parseInt(values[1], 10);
+                newLine = parseInt(values[2], 10);
+            }
+            else if ((values = /^@@@ -(\d+)(?:,\d+)? -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@@.*/.exec(line))) {
+                currentFile.isCombined = true;
+                oldLine = parseInt(values[1], 10);
+                oldLine2 = parseInt(values[2], 10);
+                newLine = parseInt(values[3], 10);
+            }
+            else {
+                if (line.startsWith(hunkHeaderPrefix)) {
+                    console.error('Failed to parse lines, starting in 0!');
+                }
+                oldLine = 0;
+                newLine = 0;
+                currentFile.isCombined = false;
+            }
+        }
+        currentBlock = {
+            lines: [],
+            oldStartLine: oldLine,
+            oldStartLine2: oldLine2,
+            newStartLine: newLine,
+            header: line,
+        };
+    }
+    function createLine(line) {
+        if (currentFile === null || currentBlock === null || oldLine === null || newLine === null)
+            return;
+        const currentLine = {
+            content: line,
+        };
+        const addedPrefixes = currentFile.isCombined ? ['+ ', ' +', '++'] : ['+'];
+        const deletedPrefixes = currentFile.isCombined ? ['- ', ' -', '--'] : ['-'];
+        if (startsWithAny(line, addedPrefixes)) {
+            currentFile.addedLines++;
+            currentLine.type = LineType.INSERT;
+            currentLine.oldNumber = undefined;
+            currentLine.newNumber = newLine++;
+        }
+        else if (startsWithAny(line, deletedPrefixes)) {
+            currentFile.deletedLines++;
+            currentLine.type = LineType.DELETE;
+            currentLine.oldNumber = oldLine++;
+            currentLine.newNumber = undefined;
+        }
+        else {
+            currentLine.type = LineType.CONTEXT;
+            currentLine.oldNumber = oldLine++;
+            currentLine.newNumber = newLine++;
+        }
+        currentBlock.lines.push(currentLine);
+    }
+    function existHunkHeader(line, lineIdx) {
+        let idx = lineIdx;
+        while (idx < diffLines.length - 3) {
+            if (line.startsWith('diff')) {
+                return false;
+            }
+            if (diffLines[idx].startsWith(oldFileNameHeader) &&
+                diffLines[idx + 1].startsWith(newFileNameHeader) &&
+                diffLines[idx + 2].startsWith(hunkHeaderPrefix)) {
+                return true;
+            }
+            idx++;
+        }
+        return false;
+    }
+    diffLines.forEach((line, lineIndex) => {
+        if (!line || line.startsWith('*')) {
+            return;
+        }
+        let values;
+        const prevLine = diffLines[lineIndex - 1];
+        const nxtLine = diffLines[lineIndex + 1];
+        const afterNxtLine = diffLines[lineIndex + 2];
+        if (line.startsWith('diff --git') || line.startsWith('diff --combined')) {
+            startFile();
+            const gitDiffStart = /^diff --git "?([a-ciow]\/.+)"? "?([a-ciow]\/.+)"?/;
+            if ((values = gitDiffStart.exec(line))) {
+                possibleOldName = getFilename(values[1], undefined, config.dstPrefix);
+                possibleNewName = getFilename(values[2], undefined, config.srcPrefix);
+            }
+            if (currentFile === null) {
+                throw new Error('Where is my file !!!');
+            }
+            currentFile.isGitDiff = true;
+            return;
+        }
+        if (line.startsWith('Binary files') && !(currentFile === null || currentFile === undefined ? undefined : currentFile.isGitDiff)) {
+            startFile();
+            const unixDiffBinaryStart = /^Binary files "?([a-ciow]\/.+)"? and "?([a-ciow]\/.+)"? differ/;
+            if ((values = unixDiffBinaryStart.exec(line))) {
+                possibleOldName = getFilename(values[1], undefined, config.dstPrefix);
+                possibleNewName = getFilename(values[2], undefined, config.srcPrefix);
+            }
+            if (currentFile === null) {
+                throw new Error('Where is my file !!!');
+            }
+            currentFile.isBinary = true;
+            return;
+        }
+        if (!currentFile ||
+            (!currentFile.isGitDiff &&
+                currentFile &&
+                line.startsWith(oldFileNameHeader) &&
+                nxtLine.startsWith(newFileNameHeader) &&
+                afterNxtLine.startsWith(hunkHeaderPrefix))) {
+            startFile();
+        }
+        if (currentFile === null || currentFile === undefined ? undefined : currentFile.isTooBig) {
+            return;
+        }
+        if (currentFile &&
+            ((typeof config.diffMaxChanges === 'number' &&
+                currentFile.addedLines + currentFile.deletedLines > config.diffMaxChanges) ||
+                (typeof config.diffMaxLineLength === 'number' && line.length > config.diffMaxLineLength))) {
+            currentFile.isTooBig = true;
+            currentFile.addedLines = 0;
+            currentFile.deletedLines = 0;
+            currentFile.blocks = [];
+            currentBlock = null;
+            const message = typeof config.diffTooBigMessage === 'function'
+                ? config.diffTooBigMessage(files.length)
+                : 'Diff too big to be displayed';
+            startBlock(message);
+            return;
+        }
+        if ((line.startsWith(oldFileNameHeader) && nxtLine.startsWith(newFileNameHeader)) ||
+            (line.startsWith(newFileNameHeader) && prevLine.startsWith(oldFileNameHeader))) {
+            if (currentFile &&
+                !currentFile.oldName &&
+                line.startsWith('--- ') &&
+                (values = getSrcFilename(line, config.srcPrefix))) {
+                currentFile.oldName = values;
+                currentFile.language = getExtension(currentFile.oldName, currentFile.language);
+                return;
+            }
+            if (currentFile &&
+                !currentFile.newName &&
+                line.startsWith('+++ ') &&
+                (values = getDstFilename(line, config.dstPrefix))) {
+                currentFile.newName = values;
+                currentFile.language = getExtension(currentFile.newName, currentFile.language);
+                return;
+            }
+        }
+        if (currentFile &&
+            (line.startsWith(hunkHeaderPrefix) ||
+                (currentFile.isGitDiff && currentFile.oldName && currentFile.newName && !currentBlock))) {
+            startBlock(line);
+            return;
+        }
+        if (currentBlock && (line.startsWith('+') || line.startsWith('-') || line.startsWith(' '))) {
+            createLine(line);
+            return;
+        }
+        const doesNotExistHunkHeader = !existHunkHeader(line, lineIndex);
+        if (currentFile === null) {
+            throw new Error('Where is my file !!!');
+        }
+        if ((values = oldMode.exec(line))) {
+            currentFile.oldMode = values[1];
+        }
+        else if ((values = newMode.exec(line))) {
+            currentFile.newMode = values[1];
+        }
+        else if ((values = deletedFileMode.exec(line))) {
+            currentFile.deletedFileMode = values[1];
+            currentFile.isDeleted = true;
+        }
+        else if ((values = newFileMode.exec(line))) {
+            currentFile.newFileMode = values[1];
+            currentFile.isNew = true;
+        }
+        else if ((values = copyFrom.exec(line))) {
+            if (doesNotExistHunkHeader) {
+                currentFile.oldName = values[1];
+            }
+            currentFile.isCopy = true;
+        }
+        else if ((values = copyTo.exec(line))) {
+            if (doesNotExistHunkHeader) {
+                currentFile.newName = values[1];
+            }
+            currentFile.isCopy = true;
+        }
+        else if ((values = renameFrom.exec(line))) {
+            if (doesNotExistHunkHeader) {
+                currentFile.oldName = values[1];
+            }
+            currentFile.isRename = true;
+        }
+        else if ((values = renameTo.exec(line))) {
+            if (doesNotExistHunkHeader) {
+                currentFile.newName = values[1];
+            }
+            currentFile.isRename = true;
+        }
+        else if ((values = binaryFiles.exec(line))) {
+            currentFile.isBinary = true;
+            currentFile.oldName = getFilename(values[1], undefined, config.srcPrefix);
+            currentFile.newName = getFilename(values[2], undefined, config.dstPrefix);
+            startBlock('Binary file');
+        }
+        else if (binaryDiff.test(line)) {
+            currentFile.isBinary = true;
+            startBlock(line);
+        }
+        else if ((values = similarityIndex.exec(line))) {
+            currentFile.unchangedPercentage = parseInt(values[1], 10);
+        }
+        else if ((values = dissimilarityIndex.exec(line))) {
+            currentFile.changedPercentage = parseInt(values[1], 10);
+        }
+        else if ((values = index.exec(line))) {
+            currentFile.checksumBefore = values[1];
+            currentFile.checksumAfter = values[2];
+            if (values[3])
+                currentFile.mode = values[3];
+        }
+        else if ((values = combinedIndex.exec(line))) {
+            currentFile.checksumBefore = [values[2], values[3]];
+            currentFile.checksumAfter = values[1];
+        }
+        else if ((values = combinedMode.exec(line))) {
+            currentFile.oldMode = [values[2], values[3]];
+            currentFile.newMode = values[1];
+        }
+        else if ((values = combinedNewFile.exec(line))) {
+            currentFile.newFileMode = values[1];
+            currentFile.isNew = true;
+        }
+        else if ((values = combinedDeletedFile.exec(line))) {
+            currentFile.deletedFileMode = values[1];
+            currentFile.isDeleted = true;
+        }
+    });
+    saveBlock();
+    saveFile();
+    return files;
+}
+
+function Diff() {}
+Diff.prototype = {
+  diff: function diff(oldString, newString) {
+    var _options$timeout;
+    var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+    var callback = options.callback;
+    if (typeof options === 'function') {
+      callback = options;
+      options = {};
+    }
+    var self = this;
+    function done(value) {
+      value = self.postProcess(value, options);
+      if (callback) {
+        setTimeout(function () {
+          callback(value);
+        }, 0);
+        return true;
+      } else {
+        return value;
+      }
+    }
+
+    // Allow subclasses to massage the input prior to running
+    oldString = this.castInput(oldString, options);
+    newString = this.castInput(newString, options);
+    oldString = this.removeEmpty(this.tokenize(oldString, options));
+    newString = this.removeEmpty(this.tokenize(newString, options));
+    var newLen = newString.length,
+      oldLen = oldString.length;
+    var editLength = 1;
+    var maxEditLength = newLen + oldLen;
+    if (options.maxEditLength != null) {
+      maxEditLength = Math.min(maxEditLength, options.maxEditLength);
+    }
+    var maxExecutionTime = (_options$timeout = options.timeout) !== null && _options$timeout !== undefined ? _options$timeout : Infinity;
+    var abortAfterTimestamp = Date.now() + maxExecutionTime;
+    var bestPath = [{
+      oldPos: -1,
+      lastComponent: undefined
+    }];
+
+    // Seed editLength = 0, i.e. the content starts with the same values
+    var newPos = this.extractCommon(bestPath[0], newString, oldString, 0, options);
+    if (bestPath[0].oldPos + 1 >= oldLen && newPos + 1 >= newLen) {
+      // Identity per the equality and tokenizer
+      return done(buildValues(self, bestPath[0].lastComponent, newString, oldString, self.useLongestToken));
+    }
+
+    // Once we hit the right edge of the edit graph on some diagonal k, we can
+    // definitely reach the end of the edit graph in no more than k edits, so
+    // there's no point in considering any moves to diagonal k+1 any more (from
+    // which we're guaranteed to need at least k+1 more edits).
+    // Similarly, once we've reached the bottom of the edit graph, there's no
+    // point considering moves to lower diagonals.
+    // We record this fact by setting minDiagonalToConsider and
+    // maxDiagonalToConsider to some finite value once we've hit the edge of
+    // the edit graph.
+    // This optimization is not faithful to the original algorithm presented in
+    // Myers's paper, which instead pointlessly extends D-paths off the end of
+    // the edit graph - see page 7 of Myers's paper which notes this point
+    // explicitly and illustrates it with a diagram. This has major performance
+    // implications for some common scenarios. For instance, to compute a diff
+    // where the new text simply appends d characters on the end of the
+    // original text of length n, the true Myers algorithm will take O(n+d^2)
+    // time while this optimization needs only O(n+d) time.
+    var minDiagonalToConsider = -Infinity,
+      maxDiagonalToConsider = Infinity;
+
+    // Main worker method. checks all permutations of a given edit length for acceptance.
+    function execEditLength() {
+      for (var diagonalPath = Math.max(minDiagonalToConsider, -editLength); diagonalPath <= Math.min(maxDiagonalToConsider, editLength); diagonalPath += 2) {
+        var basePath = undefined;
+        var removePath = bestPath[diagonalPath - 1],
+          addPath = bestPath[diagonalPath + 1];
+        if (removePath) {
+          // No one else is going to attempt to use this value, clear it
+          bestPath[diagonalPath - 1] = undefined;
+        }
+        var canAdd = false;
+        if (addPath) {
+          // what newPos will be after we do an insertion:
+          var addPathNewPos = addPath.oldPos - diagonalPath;
+          canAdd = addPath && 0 <= addPathNewPos && addPathNewPos < newLen;
+        }
+        var canRemove = removePath && removePath.oldPos + 1 < oldLen;
+        if (!canAdd && !canRemove) {
+          // If this path is a terminal then prune
+          bestPath[diagonalPath] = undefined;
+          continue;
+        }
+
+        // Select the diagonal that we want to branch from. We select the prior
+        // path whose position in the old string is the farthest from the origin
+        // and does not pass the bounds of the diff graph
+        if (!canRemove || canAdd && removePath.oldPos < addPath.oldPos) {
+          basePath = self.addToPath(addPath, true, false, 0, options);
+        } else {
+          basePath = self.addToPath(removePath, false, true, 1, options);
+        }
+        newPos = self.extractCommon(basePath, newString, oldString, diagonalPath, options);
+        if (basePath.oldPos + 1 >= oldLen && newPos + 1 >= newLen) {
+          // If we have hit the end of both strings, then we are done
+          return done(buildValues(self, basePath.lastComponent, newString, oldString, self.useLongestToken));
+        } else {
+          bestPath[diagonalPath] = basePath;
+          if (basePath.oldPos + 1 >= oldLen) {
+            maxDiagonalToConsider = Math.min(maxDiagonalToConsider, diagonalPath - 1);
+          }
+          if (newPos + 1 >= newLen) {
+            minDiagonalToConsider = Math.max(minDiagonalToConsider, diagonalPath + 1);
+          }
+        }
+      }
+      editLength++;
+    }
+
+    // Performs the length of edit iteration. Is a bit fugly as this has to support the
+    // sync and async mode which is never fun. Loops over execEditLength until a value
+    // is produced, or until the edit length exceeds options.maxEditLength (if given),
+    // in which case it will return undefined.
+    if (callback) {
+      (function exec() {
+        setTimeout(function () {
+          if (editLength > maxEditLength || Date.now() > abortAfterTimestamp) {
+            return callback();
+          }
+          if (!execEditLength()) {
+            exec();
+          }
+        }, 0);
+      })();
+    } else {
+      while (editLength <= maxEditLength && Date.now() <= abortAfterTimestamp) {
+        var ret = execEditLength();
+        if (ret) {
+          return ret;
+        }
+      }
+    }
+  },
+  addToPath: function addToPath(path, added, removed, oldPosInc, options) {
+    var last = path.lastComponent;
+    if (last && !options.oneChangePerToken && last.added === added && last.removed === removed) {
+      return {
+        oldPos: path.oldPos + oldPosInc,
+        lastComponent: {
+          count: last.count + 1,
+          added: added,
+          removed: removed,
+          previousComponent: last.previousComponent
+        }
+      };
+    } else {
+      return {
+        oldPos: path.oldPos + oldPosInc,
+        lastComponent: {
+          count: 1,
+          added: added,
+          removed: removed,
+          previousComponent: last
+        }
+      };
+    }
+  },
+  extractCommon: function extractCommon(basePath, newString, oldString, diagonalPath, options) {
+    var newLen = newString.length,
+      oldLen = oldString.length,
+      oldPos = basePath.oldPos,
+      newPos = oldPos - diagonalPath,
+      commonCount = 0;
+    while (newPos + 1 < newLen && oldPos + 1 < oldLen && this.equals(oldString[oldPos + 1], newString[newPos + 1], options)) {
+      newPos++;
+      oldPos++;
+      commonCount++;
+      if (options.oneChangePerToken) {
+        basePath.lastComponent = {
+          count: 1,
+          previousComponent: basePath.lastComponent,
+          added: false,
+          removed: false
+        };
+      }
+    }
+    if (commonCount && !options.oneChangePerToken) {
+      basePath.lastComponent = {
+        count: commonCount,
+        previousComponent: basePath.lastComponent,
+        added: false,
+        removed: false
+      };
+    }
+    basePath.oldPos = oldPos;
+    return newPos;
+  },
+  equals: function equals(left, right, options) {
+    if (options.comparator) {
+      return options.comparator(left, right);
+    } else {
+      return left === right || options.ignoreCase && left.toLowerCase() === right.toLowerCase();
+    }
+  },
+  removeEmpty: function removeEmpty(array) {
+    var ret = [];
+    for (var i = 0; i < array.length; i++) {
+      if (array[i]) {
+        ret.push(array[i]);
+      }
+    }
+    return ret;
+  },
+  castInput: function castInput(value) {
+    return value;
+  },
+  tokenize: function tokenize(value) {
+    return Array.from(value);
+  },
+  join: function join(chars) {
+    return chars.join('');
+  },
+  postProcess: function postProcess(changeObjects) {
+    return changeObjects;
+  }
+};
+function buildValues(diff, lastComponent, newString, oldString, useLongestToken) {
+  // First we convert our linked list of components in reverse order to an
+  // array in the right order:
+  var components = [];
+  var nextComponent;
+  while (lastComponent) {
+    components.push(lastComponent);
+    nextComponent = lastComponent.previousComponent;
+    delete lastComponent.previousComponent;
+    lastComponent = nextComponent;
+  }
+  components.reverse();
+  var componentPos = 0,
+    componentLen = components.length,
+    newPos = 0,
+    oldPos = 0;
+  for (; componentPos < componentLen; componentPos++) {
+    var component = components[componentPos];
+    if (!component.removed) {
+      if (!component.added && useLongestToken) {
+        var value = newString.slice(newPos, newPos + component.count);
+        value = value.map(function (value, i) {
+          var oldValue = oldString[oldPos + i];
+          return oldValue.length > value.length ? oldValue : value;
+        });
+        component.value = diff.join(value);
+      } else {
+        component.value = diff.join(newString.slice(newPos, newPos + component.count));
+      }
+      newPos += component.count;
+
+      // Common case
+      if (!component.added) {
+        oldPos += component.count;
+      }
+    } else {
+      component.value = diff.join(oldString.slice(oldPos, oldPos + component.count));
+      oldPos += component.count;
+    }
+  }
+  return components;
+}
+
+var characterDiff = new Diff();
+function diffChars(oldStr, newStr, options) {
+  return characterDiff.diff(oldStr, newStr, options);
+}
+
+function longestCommonPrefix(str1, str2) {
+  var i;
+  for (i = 0; i < str1.length && i < str2.length; i++) {
+    if (str1[i] != str2[i]) {
+      return str1.slice(0, i);
+    }
+  }
+  return str1.slice(0, i);
+}
+function longestCommonSuffix(str1, str2) {
+  var i;
+
+  // Unlike longestCommonPrefix, we need a special case to handle all scenarios
+  // where we return the empty string since str1.slice(-0) will return the
+  // entire string.
+  if (!str1 || !str2 || str1[str1.length - 1] != str2[str2.length - 1]) {
+    return '';
+  }
+  for (i = 0; i < str1.length && i < str2.length; i++) {
+    if (str1[str1.length - (i + 1)] != str2[str2.length - (i + 1)]) {
+      return str1.slice(-i);
+    }
+  }
+  return str1.slice(-i);
+}
+function replacePrefix(string, oldPrefix, newPrefix) {
+  if (string.slice(0, oldPrefix.length) != oldPrefix) {
+    throw Error("string ".concat(JSON.stringify(string), " doesn't start with prefix ").concat(JSON.stringify(oldPrefix), "; this is a bug"));
+  }
+  return newPrefix + string.slice(oldPrefix.length);
+}
+function replaceSuffix(string, oldSuffix, newSuffix) {
+  if (!oldSuffix) {
+    return string + newSuffix;
+  }
+  if (string.slice(-oldSuffix.length) != oldSuffix) {
+    throw Error("string ".concat(JSON.stringify(string), " doesn't end with suffix ").concat(JSON.stringify(oldSuffix), "; this is a bug"));
+  }
+  return string.slice(0, -oldSuffix.length) + newSuffix;
+}
+function removePrefix(string, oldPrefix) {
+  return replacePrefix(string, oldPrefix, '');
+}
+function removeSuffix(string, oldSuffix) {
+  return replaceSuffix(string, oldSuffix, '');
+}
+function maximumOverlap(string1, string2) {
+  return string2.slice(0, overlapCount(string1, string2));
+}
+
+// Nicked from https://stackoverflow.com/a/60422853/1709587
+function overlapCount(a, b) {
+  // Deal with cases where the strings differ in length
+  var startA = 0;
+  if (a.length > b.length) {
+    startA = a.length - b.length;
+  }
+  var endB = b.length;
+  if (a.length < b.length) {
+    endB = a.length;
+  }
+  // Create a back-reference for each index
+  //   that should be followed in case of a mismatch.
+  //   We only need B to make these references:
+  var map = Array(endB);
+  var k = 0; // Index that lags behind j
+  map[0] = 0;
+  for (var j = 1; j < endB; j++) {
+    if (b[j] == b[k]) {
+      map[j] = map[k]; // skip over the same character (optional optimisation)
+    } else {
+      map[j] = k;
+    }
+    while (k > 0 && b[j] != b[k]) {
+      k = map[k];
+    }
+    if (b[j] == b[k]) {
+      k++;
+    }
+  }
+  // Phase 2: use these references while iterating over A
+  k = 0;
+  for (var i = startA; i < a.length; i++) {
+    while (k > 0 && a[i] != b[k]) {
+      k = map[k];
+    }
+    if (a[i] == b[k]) {
+      k++;
+    }
+  }
+  return k;
+}
+
+// Based on https://en.wikipedia.org/wiki/Latin_script_in_Unicode
+//
+// Ranges and exceptions:
+// Latin-1 Supplement, 0080–00FF
+//  - U+00D7  × Multiplication sign
+//  - U+00F7  ÷ Division sign
+// Latin Extended-A, 0100–017F
+// Latin Extended-B, 0180–024F
+// IPA Extensions, 0250–02AF
+// Spacing Modifier Letters, 02B0–02FF
+//  - U+02C7  ˇ &#711;  Caron
+//  - U+02D8  ˘ &#728;  Breve
+//  - U+02D9  ˙ &#729;  Dot Above
+//  - U+02DA  ˚ &#730;  Ring Above
+//  - U+02DB  ˛ &#731;  Ogonek
+//  - U+02DC  ˜ &#732;  Small Tilde
+//  - U+02DD  ˝ &#733;  Double Acute Accent
+// Latin Extended Additional, 1E00–1EFF
+var extendedWordChars = "a-zA-Z0-9_\\u{C0}-\\u{FF}\\u{D8}-\\u{F6}\\u{F8}-\\u{2C6}\\u{2C8}-\\u{2D7}\\u{2DE}-\\u{2FF}\\u{1E00}-\\u{1EFF}";
+
+// Each token is one of the following:
+// - A punctuation mark plus the surrounding whitespace
+// - A word plus the surrounding whitespace
+// - Pure whitespace (but only in the special case where this the entire text
+//   is just whitespace)
+//
+// We have to include surrounding whitespace in the tokens because the two
+// alternative approaches produce horribly broken results:
+// * If we just discard the whitespace, we can't fully reproduce the original
+//   text from the sequence of tokens and any attempt to render the diff will
+//   get the whitespace wrong.
+// * If we have separate tokens for whitespace, then in a typical text every
+//   second token will be a single space character. But this often results in
+//   the optimal diff between two texts being a perverse one that preserves
+//   the spaces between words but deletes and reinserts actual common words.
+//   See https://github.com/kpdecker/jsdiff/issues/160#issuecomment-1866099640
+//   for an example.
+//
+// Keeping the surrounding whitespace of course has implications for .equals
+// and .join, not just .tokenize.
+
+// This regex does NOT fully implement the tokenization rules described above.
+// Instead, it gives runs of whitespace their own "token". The tokenize method
+// then handles stitching whitespace tokens onto adjacent word or punctuation
+// tokens.
+var tokenizeIncludingWhitespace = new RegExp("[".concat(extendedWordChars, "]+|\\s+|[^").concat(extendedWordChars, "]"), 'ug');
+var wordDiff = new Diff();
+wordDiff.equals = function (left, right, options) {
+  if (options.ignoreCase) {
+    left = left.toLowerCase();
+    right = right.toLowerCase();
+  }
+  return left.trim() === right.trim();
+};
+wordDiff.tokenize = function (value) {
+  var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+  var parts;
+  if (options.intlSegmenter) {
+    if (options.intlSegmenter.resolvedOptions().granularity != 'word') {
+      throw new Error('The segmenter passed must have a granularity of "word"');
+    }
+    parts = Array.from(options.intlSegmenter.segment(value), function (segment) {
+      return segment.segment;
+    });
+  } else {
+    parts = value.match(tokenizeIncludingWhitespace) || [];
+  }
+  var tokens = [];
+  var prevPart = null;
+  parts.forEach(function (part) {
+    if (/\s/.test(part)) {
+      if (prevPart == null) {
+        tokens.push(part);
+      } else {
+        tokens.push(tokens.pop() + part);
+      }
+    } else if (/\s/.test(prevPart)) {
+      if (tokens[tokens.length - 1] == prevPart) {
+        tokens.push(tokens.pop() + part);
+      } else {
+        tokens.push(prevPart + part);
+      }
+    } else {
+      tokens.push(part);
+    }
+    prevPart = part;
+  });
+  return tokens;
+};
+wordDiff.join = function (tokens) {
+  // Tokens being joined here will always have appeared consecutively in the
+  // same text, so we can simply strip off the leading whitespace from all the
+  // tokens except the first (and except any whitespace-only tokens - but such
+  // a token will always be the first and only token anyway) and then join them
+  // and the whitespace around words and punctuation will end up correct.
+  return tokens.map(function (token, i) {
+    if (i == 0) {
+      return token;
+    } else {
+      return token.replace(/^\s+/, '');
+    }
+  }).join('');
+};
+wordDiff.postProcess = function (changes, options) {
+  if (!changes || options.oneChangePerToken) {
+    return changes;
+  }
+  var lastKeep = null;
+  // Change objects representing any insertion or deletion since the last
+  // "keep" change object. There can be at most one of each.
+  var insertion = null;
+  var deletion = null;
+  changes.forEach(function (change) {
+    if (change.added) {
+      insertion = change;
+    } else if (change.removed) {
+      deletion = change;
+    } else {
+      if (insertion || deletion) {
+        // May be false at start of text
+        dedupeWhitespaceInChangeObjects(lastKeep, deletion, insertion, change);
+      }
+      lastKeep = change;
+      insertion = null;
+      deletion = null;
+    }
+  });
+  if (insertion || deletion) {
+    dedupeWhitespaceInChangeObjects(lastKeep, deletion, insertion, null);
+  }
+  return changes;
+};
+function dedupeWhitespaceInChangeObjects(startKeep, deletion, insertion, endKeep) {
+  // Before returning, we tidy up the leading and trailing whitespace of the
+  // change objects to eliminate cases where trailing whitespace in one object
+  // is repeated as leading whitespace in the next.
+  // Below are examples of the outcomes we want here to explain the code.
+  // I=insert, K=keep, D=delete
+  // 1. diffing 'foo bar baz' vs 'foo baz'
+  //    Prior to cleanup, we have K:'foo ' D:' bar ' K:' baz'
+  //    After cleanup, we want:   K:'foo ' D:'bar ' K:'baz'
+  //
+  // 2. Diffing 'foo bar baz' vs 'foo qux baz'
+  //    Prior to cleanup, we have K:'foo ' D:' bar ' I:' qux ' K:' baz'
+  //    After cleanup, we want K:'foo ' D:'bar' I:'qux' K:' baz'
+  //
+  // 3. Diffing 'foo\nbar baz' vs 'foo baz'
+  //    Prior to cleanup, we have K:'foo ' D:'\nbar ' K:' baz'
+  //    After cleanup, we want K'foo' D:'\nbar' K:' baz'
+  //
+  // 4. Diffing 'foo baz' vs 'foo\nbar baz'
+  //    Prior to cleanup, we have K:'foo\n' I:'\nbar ' K:' baz'
+  //    After cleanup, we ideally want K'foo' I:'\nbar' K:' baz'
+  //    but don't actually manage this currently (the pre-cleanup change
+  //    objects don't contain enough information to make it possible).
+  //
+  // 5. Diffing 'foo   bar baz' vs 'foo  baz'
+  //    Prior to cleanup, we have K:'foo  ' D:'   bar ' K:'  baz'
+  //    After cleanup, we want K:'foo  ' D:' bar ' K:'baz'
+  //
+  // Our handling is unavoidably imperfect in the case where there's a single
+  // indel between keeps and the whitespace has changed. For instance, consider
+  // diffing 'foo\tbar\nbaz' vs 'foo baz'. Unless we create an extra change
+  // object to represent the insertion of the space character (which isn't even
+  // a token), we have no way to avoid losing information about the texts'
+  // original whitespace in the result we return. Still, we do our best to
+  // output something that will look sensible if we e.g. print it with
+  // insertions in green and deletions in red.
+
+  // Between two "keep" change objects (or before the first or after the last
+  // change object), we can have either:
+  // * A "delete" followed by an "insert"
+  // * Just an "insert"
+  // * Just a "delete"
+  // We handle the three cases separately.
+  if (deletion && insertion) {
+    var oldWsPrefix = deletion.value.match(/^\s*/)[0];
+    var oldWsSuffix = deletion.value.match(/\s*$/)[0];
+    var newWsPrefix = insertion.value.match(/^\s*/)[0];
+    var newWsSuffix = insertion.value.match(/\s*$/)[0];
+    if (startKeep) {
+      var commonWsPrefix = longestCommonPrefix(oldWsPrefix, newWsPrefix);
+      startKeep.value = replaceSuffix(startKeep.value, newWsPrefix, commonWsPrefix);
+      deletion.value = removePrefix(deletion.value, commonWsPrefix);
+      insertion.value = removePrefix(insertion.value, commonWsPrefix);
+    }
+    if (endKeep) {
+      var commonWsSuffix = longestCommonSuffix(oldWsSuffix, newWsSuffix);
+      endKeep.value = replacePrefix(endKeep.value, newWsSuffix, commonWsSuffix);
+      deletion.value = removeSuffix(deletion.value, commonWsSuffix);
+      insertion.value = removeSuffix(insertion.value, commonWsSuffix);
+    }
+  } else if (insertion) {
+    // The whitespaces all reflect what was in the new text rather than
+    // the old, so we essentially have no information about whitespace
+    // insertion or deletion. We just want to dedupe the whitespace.
+    // We do that by having each change object keep its trailing
+    // whitespace and deleting duplicate leading whitespace where
+    // present.
+    if (startKeep) {
+      insertion.value = insertion.value.replace(/^\s*/, '');
+    }
+    if (endKeep) {
+      endKeep.value = endKeep.value.replace(/^\s*/, '');
+    }
+    // otherwise we've got a deletion and no insertion
+  } else if (startKeep && endKeep) {
+    var newWsFull = endKeep.value.match(/^\s*/)[0],
+      delWsStart = deletion.value.match(/^\s*/)[0],
+      delWsEnd = deletion.value.match(/\s*$/)[0];
+
+    // Any whitespace that comes straight after startKeep in both the old and
+    // new texts, assign to startKeep and remove from the deletion.
+    var newWsStart = longestCommonPrefix(newWsFull, delWsStart);
+    deletion.value = removePrefix(deletion.value, newWsStart);
+
+    // Any whitespace that comes straight before endKeep in both the old and
+    // new texts, and hasn't already been assigned to startKeep, assign to
+    // endKeep and remove from the deletion.
+    var newWsEnd = longestCommonSuffix(removePrefix(newWsFull, newWsStart), delWsEnd);
+    deletion.value = removeSuffix(deletion.value, newWsEnd);
+    endKeep.value = replacePrefix(endKeep.value, newWsFull, newWsEnd);
+
+    // If there's any whitespace from the new text that HASN'T already been
+    // assigned, assign it to the start:
+    startKeep.value = replaceSuffix(startKeep.value, newWsFull, newWsFull.slice(0, newWsFull.length - newWsEnd.length));
+  } else if (endKeep) {
+    // We are at the start of the text. Preserve all the whitespace on
+    // endKeep, and just remove whitespace from the end of deletion to the
+    // extent that it overlaps with the start of endKeep.
+    var endKeepWsPrefix = endKeep.value.match(/^\s*/)[0];
+    var deletionWsSuffix = deletion.value.match(/\s*$/)[0];
+    var overlap = maximumOverlap(deletionWsSuffix, endKeepWsPrefix);
+    deletion.value = removeSuffix(deletion.value, overlap);
+  } else if (startKeep) {
+    // We are at the END of the text. Preserve all the whitespace on
+    // startKeep, and just remove whitespace from the start of deletion to
+    // the extent that it overlaps with the end of startKeep.
+    var startKeepWsSuffix = startKeep.value.match(/\s*$/)[0];
+    var deletionWsPrefix = deletion.value.match(/^\s*/)[0];
+    var _overlap = maximumOverlap(startKeepWsSuffix, deletionWsPrefix);
+    deletion.value = removePrefix(deletion.value, _overlap);
+  }
+}
+var wordWithSpaceDiff = new Diff();
+wordWithSpaceDiff.tokenize = function (value) {
+  // Slightly different to the tokenizeIncludingWhitespace regex used above in
+  // that this one treats each individual newline as a distinct tokens, rather
+  // than merging them into other surrounding whitespace. This was requested
+  // in https://github.com/kpdecker/jsdiff/issues/180 &
+  //    https://github.com/kpdecker/jsdiff/issues/211
+  var regex = new RegExp("(\\r?\\n)|[".concat(extendedWordChars, "]+|[^\\S\\n\\r]+|[^").concat(extendedWordChars, "]"), 'ug');
+  return value.match(regex) || [];
+};
+function diffWordsWithSpace(oldStr, newStr, options) {
+  return wordWithSpaceDiff.diff(oldStr, newStr, options);
+}
+
+var lineDiff = new Diff();
+lineDiff.tokenize = function (value, options) {
+  if (options.stripTrailingCr) {
+    // remove one \r before \n to match GNU diff's --strip-trailing-cr behavior
+    value = value.replace(/\r\n/g, '\n');
+  }
+  var retLines = [],
+    linesAndNewlines = value.split(/(\n|\r\n)/);
+
+  // Ignore the final empty token that occurs if the string ends with a new line
+  if (!linesAndNewlines[linesAndNewlines.length - 1]) {
+    linesAndNewlines.pop();
+  }
+
+  // Merge the content and line separators into single tokens
+  for (var i = 0; i < linesAndNewlines.length; i++) {
+    var line = linesAndNewlines[i];
+    if (i % 2 && !options.newlineIsToken) {
+      retLines[retLines.length - 1] += line;
+    } else {
+      retLines.push(line);
+    }
+  }
+  return retLines;
+};
+lineDiff.equals = function (left, right, options) {
+  // If we're ignoring whitespace, we need to normalise lines by stripping
+  // whitespace before checking equality. (This has an annoying interaction
+  // with newlineIsToken that requires special handling: if newlines get their
+  // own token, then we DON'T want to trim the *newline* tokens down to empty
+  // strings, since this would cause us to treat whitespace-only line content
+  // as equal to a separator between lines, which would be weird and
+  // inconsistent with the documented behavior of the options.)
+  if (options.ignoreWhitespace) {
+    if (!options.newlineIsToken || !left.includes('\n')) {
+      left = left.trim();
+    }
+    if (!options.newlineIsToken || !right.includes('\n')) {
+      right = right.trim();
+    }
+  } else if (options.ignoreNewlineAtEof && !options.newlineIsToken) {
+    if (left.endsWith('\n')) {
+      left = left.slice(0, -1);
+    }
+    if (right.endsWith('\n')) {
+      right = right.slice(0, -1);
+    }
+  }
+  return Diff.prototype.equals.call(this, left, right, options);
+};
+
+var sentenceDiff = new Diff();
+sentenceDiff.tokenize = function (value) {
+  return value.split(/(\S.+?[.!?])(?=\s+|$)/);
+};
+
+var cssDiff = new Diff();
+cssDiff.tokenize = function (value) {
+  return value.split(/([{}:;,]|\s+)/);
+};
+function _typeof(o) {
+  "@babel/helpers - typeof";
+
+  return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) {
+    return typeof o;
+  } : function (o) {
+    return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o;
+  }, _typeof(o);
+}
+
+var jsonDiff = new Diff();
+// Discriminate between two lines of pretty-printed, serialized JSON where one of them has a
+// dangling comma and the other doesn't. Turns out including the dangling comma yields the nicest output:
+jsonDiff.useLongestToken = true;
+jsonDiff.tokenize = lineDiff.tokenize;
+jsonDiff.castInput = function (value, options) {
+  var undefinedReplacement = options.undefinedReplacement,
+    _options$stringifyRep = options.stringifyReplacer,
+    stringifyReplacer = _options$stringifyRep === undefined ? function (k, v) {
+      return typeof v === 'undefined' ? undefinedReplacement : v;
+    } : _options$stringifyRep;
+  return typeof value === 'string' ? value : JSON.stringify(canonicalize(value, null, null, stringifyReplacer), stringifyReplacer, '  ');
+};
+jsonDiff.equals = function (left, right, options) {
+  return Diff.prototype.equals.call(jsonDiff, left.replace(/,([\r\n])/g, '$1'), right.replace(/,([\r\n])/g, '$1'), options);
+};
+
+// This function handles the presence of circular references by bailing out when encountering an
+// object that is already on the "stack" of items being processed. Accepts an optional replacer
+function canonicalize(obj, stack, replacementStack, replacer, key) {
+  stack = stack || [];
+  replacementStack = replacementStack || [];
+  if (replacer) {
+    obj = replacer(key, obj);
+  }
+  var i;
+  for (i = 0; i < stack.length; i += 1) {
+    if (stack[i] === obj) {
+      return replacementStack[i];
+    }
+  }
+  var canonicalizedObj;
+  if ('[object Array]' === Object.prototype.toString.call(obj)) {
+    stack.push(obj);
+    canonicalizedObj = new Array(obj.length);
+    replacementStack.push(canonicalizedObj);
+    for (i = 0; i < obj.length; i += 1) {
+      canonicalizedObj[i] = canonicalize(obj[i], stack, replacementStack, replacer, key);
+    }
+    stack.pop();
+    replacementStack.pop();
+    return canonicalizedObj;
+  }
+  if (obj && obj.toJSON) {
+    obj = obj.toJSON();
+  }
+  if (_typeof(obj) === 'object' && obj !== null) {
+    stack.push(obj);
+    canonicalizedObj = {};
+    replacementStack.push(canonicalizedObj);
+    var sortedKeys = [],
+      _key;
+    for (_key in obj) {
+      /* istanbul ignore else */
+      if (Object.prototype.hasOwnProperty.call(obj, _key)) {
+        sortedKeys.push(_key);
+      }
+    }
+    sortedKeys.sort();
+    for (i = 0; i < sortedKeys.length; i += 1) {
+      _key = sortedKeys[i];
+      canonicalizedObj[_key] = canonicalize(obj[_key], stack, replacementStack, replacer, _key);
+    }
+    stack.pop();
+    replacementStack.pop();
+  } else {
+    canonicalizedObj = obj;
+  }
+  return canonicalizedObj;
+}
+
+var arrayDiff = new Diff();
+arrayDiff.tokenize = function (value) {
+  return value.slice();
+};
+arrayDiff.join = arrayDiff.removeEmpty = function (value) {
+  return value;
+};
+
+function levenshtein(a, b) {
+    if (a.length === 0) {
+        return b.length;
+    }
+    if (b.length === 0) {
+        return a.length;
+    }
+    const matrix = [];
+    let i;
+    for (i = 0; i <= b.length; i++) {
+        matrix[i] = [i];
+    }
+    let j;
+    for (j = 0; j <= a.length; j++) {
+        matrix[0][j] = j;
+    }
+    for (i = 1; i <= b.length; i++) {
+        for (j = 1; j <= a.length; j++) {
+            if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                matrix[i][j] = matrix[i - 1][j - 1];
+            }
+            else {
+                matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1));
+            }
+        }
+    }
+    return matrix[b.length][a.length];
+}
+function newDistanceFn(str) {
+    return (x, y) => {
+        const xValue = str(x).trim();
+        const yValue = str(y).trim();
+        const lev = levenshtein(xValue, yValue);
+        return lev / (xValue.length + yValue.length);
+    };
+}
+function newMatcherFn(distance) {
+    function findBestMatch(a, b, cache = new Map()) {
+        let bestMatchDist = Infinity;
+        let bestMatch;
+        for (let i = 0; i < a.length; ++i) {
+            for (let j = 0; j < b.length; ++j) {
+                const cacheKey = JSON.stringify([a[i], b[j]]);
+                let md;
+                if (!(cache.has(cacheKey) && (md = cache.get(cacheKey)))) {
+                    md = distance(a[i], b[j]);
+                    cache.set(cacheKey, md);
+                }
+                if (md < bestMatchDist) {
+                    bestMatchDist = md;
+                    bestMatch = { indexA: i, indexB: j, score: bestMatchDist };
+                }
+            }
+        }
+        return bestMatch;
+    }
+    function group(a, b, level = 0, cache = new Map()) {
+        const bm = findBestMatch(a, b, cache);
+        if (!bm || a.length + b.length < 3) {
+            return [[a, b]];
+        }
+        const a1 = a.slice(0, bm.indexA);
+        const b1 = b.slice(0, bm.indexB);
+        const aMatch = [a[bm.indexA]];
+        const bMatch = [b[bm.indexB]];
+        const tailA = bm.indexA + 1;
+        const tailB = bm.indexB + 1;
+        const a2 = a.slice(tailA);
+        const b2 = b.slice(tailB);
+        const group1 = group(a1, b1, level + 1, cache);
+        const groupMatch = group(aMatch, bMatch, level + 1, cache);
+        const group2 = group(a2, b2, level + 1, cache);
+        let result = groupMatch;
+        if (bm.indexA > 0 || bm.indexB > 0) {
+            result = group1.concat(result);
+        }
+        if (a.length > tailA || b.length > tailB) {
+            result = result.concat(group2);
+        }
+        return result;
+    }
+    return group;
+}
+
+const CSSLineClass = {
+    INSERTS: 'd2h-ins',
+    DELETES: 'd2h-del',
+    CONTEXT: 'd2h-cntx',
+    INFO: 'd2h-info',
+    INSERT_CHANGES: 'd2h-ins d2h-change',
+    DELETE_CHANGES: 'd2h-del d2h-change',
+};
+const defaultRenderConfig = {
+    matching: LineMatchingType.NONE,
+    matchWordsThreshold: 0.25,
+    maxLineLengthHighlight: 10000,
+    diffStyle: DiffStyleType.WORD,
+    colorScheme: ColorSchemeType.LIGHT,
+};
+const separator = '/';
+const distance = newDistanceFn((change) => change.value);
+const matcher = newMatcherFn(distance);
+function isDevNullName(name) {
+    return name.indexOf('dev/null') !== -1;
+}
+function removeInsElements(line) {
+    return line.replace(/(<ins[^>]*>((.|\n)*?)<\/ins>)/g, '');
+}
+function removeDelElements(line) {
+    return line.replace(/(<del[^>]*>((.|\n)*?)<\/del>)/g, '');
+}
+function toCSSClass(lineType) {
+    switch (lineType) {
+        case LineType.CONTEXT:
+            return CSSLineClass.CONTEXT;
+        case LineType.INSERT:
+            return CSSLineClass.INSERTS;
+        case LineType.DELETE:
+            return CSSLineClass.DELETES;
+    }
+}
+function colorSchemeToCss(colorScheme) {
+    switch (colorScheme) {
+        case ColorSchemeType.DARK:
+            return 'd2h-dark-color-scheme';
+        case ColorSchemeType.AUTO:
+            return 'd2h-auto-color-scheme';
+        case ColorSchemeType.LIGHT:
+        default:
+            return 'd2h-light-color-scheme';
+    }
+}
+function prefixLength(isCombined) {
+    return isCombined ? 2 : 1;
+}
+function escapeForHtml(str) {
+    return str
+        .slice(0)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#x27;')
+        .replace(/\//g, '&#x2F;');
+}
+function deconstructLine(line, isCombined, escape = true) {
+    const indexToSplit = prefixLength(isCombined);
+    return {
+        prefix: line.substring(0, indexToSplit),
+        content: escape ? escapeForHtml(line.substring(indexToSplit)) : line.substring(indexToSplit),
+    };
+}
+function filenameDiff(file) {
+    const oldFilename = unifyPath(file.oldName);
+    const newFilename = unifyPath(file.newName);
+    if (oldFilename !== newFilename && !isDevNullName(oldFilename) && !isDevNullName(newFilename)) {
+        const prefixPaths = [];
+        const suffixPaths = [];
+        const oldFilenameParts = oldFilename.split(separator);
+        const newFilenameParts = newFilename.split(separator);
+        const oldFilenamePartsSize = oldFilenameParts.length;
+        const newFilenamePartsSize = newFilenameParts.length;
+        let i = 0;
+        let j = oldFilenamePartsSize - 1;
+        let k = newFilenamePartsSize - 1;
+        while (i < j && i < k) {
+            if (oldFilenameParts[i] === newFilenameParts[i]) {
+                prefixPaths.push(newFilenameParts[i]);
+                i += 1;
+            }
+            else {
+                break;
+            }
+        }
+        while (j > i && k > i) {
+            if (oldFilenameParts[j] === newFilenameParts[k]) {
+                suffixPaths.unshift(newFilenameParts[k]);
+                j -= 1;
+                k -= 1;
+            }
+            else {
+                break;
+            }
+        }
+        const finalPrefix = prefixPaths.join(separator);
+        const finalSuffix = suffixPaths.join(separator);
+        const oldRemainingPath = oldFilenameParts.slice(i, j + 1).join(separator);
+        const newRemainingPath = newFilenameParts.slice(i, k + 1).join(separator);
+        if (finalPrefix.length && finalSuffix.length) {
+            return (finalPrefix + separator + '{' + oldRemainingPath + ' → ' + newRemainingPath + '}' + separator + finalSuffix);
+        }
+        else if (finalPrefix.length) {
+            return finalPrefix + separator + '{' + oldRemainingPath + ' → ' + newRemainingPath + '}';
+        }
+        else if (finalSuffix.length) {
+            return '{' + oldRemainingPath + ' → ' + newRemainingPath + '}' + separator + finalSuffix;
+        }
+        return oldFilename + ' → ' + newFilename;
+    }
+    else if (!isDevNullName(newFilename)) {
+        return newFilename;
+    }
+    else {
+        return oldFilename;
+    }
+}
+function getHtmlId(file) {
+    return `d2h-${hashCode(filenameDiff(file)).toString().slice(-6)}`;
+}
+function getFileIcon(file) {
+    let templateName = 'file-changed';
+    if (file.isRename) {
+        templateName = 'file-renamed';
+    }
+    else if (file.isCopy) {
+        templateName = 'file-renamed';
+    }
+    else if (file.isNew) {
+        templateName = 'file-added';
+    }
+    else if (file.isDeleted) {
+        templateName = 'file-deleted';
+    }
+    else if (file.newName !== file.oldName) {
+        templateName = 'file-renamed';
+    }
+    return templateName;
+}
+function diffHighlight(diffLine1, diffLine2, isCombined, config = {}) {
+    const { matching, maxLineLengthHighlight, matchWordsThreshold, diffStyle } = Object.assign(Object.assign({}, defaultRenderConfig), config);
+    const line1 = deconstructLine(diffLine1, isCombined, false);
+    const line2 = deconstructLine(diffLine2, isCombined, false);
+    if (line1.content.length > maxLineLengthHighlight || line2.content.length > maxLineLengthHighlight) {
+        return {
+            oldLine: {
+                prefix: line1.prefix,
+                content: escapeForHtml(line1.content),
+            },
+            newLine: {
+                prefix: line2.prefix,
+                content: escapeForHtml(line2.content),
+            },
+        };
+    }
+    const diff = diffStyle === 'char'
+        ? diffChars(line1.content, line2.content)
+        : diffWordsWithSpace(line1.content, line2.content);
+    const changedWords = [];
+    if (diffStyle === 'word' && matching === 'words') {
+        const removed = diff.filter(element => element.removed);
+        const added = diff.filter(element => element.added);
+        const chunks = matcher(added, removed);
+        chunks.forEach(chunk => {
+            if (chunk[0].length === 1 && chunk[1].length === 1) {
+                const dist = distance(chunk[0][0], chunk[1][0]);
+                if (dist < matchWordsThreshold) {
+                    changedWords.push(chunk[0][0]);
+                    changedWords.push(chunk[1][0]);
+                }
+            }
+        });
+    }
+    const highlightedLine = diff.reduce((highlightedLine, part) => {
+        const elemType = part.added ? 'ins' : part.removed ? 'del' : null;
+        const addClass = changedWords.indexOf(part) > -1 ? ' class="d2h-change"' : '';
+        const escapedValue = escapeForHtml(part.value);
+        return elemType !== null
+            ? `${highlightedLine}<${elemType}${addClass}>${escapedValue}</${elemType}>`
+            : `${highlightedLine}${escapedValue}`;
+    }, '');
+    return {
+        oldLine: {
+            prefix: line1.prefix,
+            content: removeInsElements(highlightedLine),
+        },
+        newLine: {
+            prefix: line2.prefix,
+            content: removeDelElements(highlightedLine),
+        },
+    };
+}
+
+const baseTemplatesPath$2 = 'file-summary';
+const iconsBaseTemplatesPath$2 = 'icon';
+const defaultFileListRendererConfig = {
+    colorScheme: defaultRenderConfig.colorScheme,
+};
+class FileListRenderer {
+    constructor(hoganUtils, config = {}) {
+        this.hoganUtils = hoganUtils;
+        this.config = Object.assign(Object.assign({}, defaultFileListRendererConfig), config);
+    }
+    render(diffFiles) {
+        const files = diffFiles
+            .map(file => this.hoganUtils.render(baseTemplatesPath$2, 'line', {
+            fileHtmlId: getHtmlId(file),
+            oldName: file.oldName,
+            newName: file.newName,
+            fileName: filenameDiff(file),
+            deletedLines: '-' + file.deletedLines,
+            addedLines: '+' + file.addedLines,
+        }, {
+            fileIcon: this.hoganUtils.template(iconsBaseTemplatesPath$2, getFileIcon(file)),
+        }))
+            .join('\n');
+        return this.hoganUtils.render(baseTemplatesPath$2, 'wrapper', {
+            colorScheme: colorSchemeToCss(this.config.colorScheme),
+            filesNumber: diffFiles.length,
+            files: files,
+        });
+    }
+}
+
+const defaultLineByLineRendererConfig = Object.assign(Object.assign({}, defaultRenderConfig), { renderNothingWhenEmpty: false, matchingMaxComparisons: 2500, maxLineSizeInBlockForComparison: 200 });
+const genericTemplatesPath$1 = 'generic';
+const baseTemplatesPath$1 = 'line-by-line';
+const iconsBaseTemplatesPath$1 = 'icon';
+const tagsBaseTemplatesPath$1 = 'tag';
+class LineByLineRenderer {
+    constructor(hoganUtils, config = {}) {
+        this.hoganUtils = hoganUtils;
+        this.config = Object.assign(Object.assign({}, defaultLineByLineRendererConfig), config);
+    }
+    render(diffFiles) {
+        const diffsHtml = diffFiles
+            .map(file => {
+            let diffs;
+            if (file.blocks.length) {
+                diffs = this.generateFileHtml(file);
+            }
+            else {
+                diffs = this.generateEmptyDiff();
+            }
+            return this.makeFileDiffHtml(file, diffs);
+        })
+            .join('\n');
+        return this.hoganUtils.render(genericTemplatesPath$1, 'wrapper', {
+            colorScheme: colorSchemeToCss(this.config.colorScheme),
+            content: diffsHtml,
+        });
+    }
+    makeFileDiffHtml(file, diffs) {
+        if (this.config.renderNothingWhenEmpty && Array.isArray(file.blocks) && file.blocks.length === 0)
+            return '';
+        const fileDiffTemplate = this.hoganUtils.template(baseTemplatesPath$1, 'file-diff');
+        const filePathTemplate = this.hoganUtils.template(genericTemplatesPath$1, 'file-path');
+        const fileIconTemplate = this.hoganUtils.template(iconsBaseTemplatesPath$1, 'file');
+        const fileTagTemplate = this.hoganUtils.template(tagsBaseTemplatesPath$1, getFileIcon(file));
+        return fileDiffTemplate.render({
+            file: file,
+            fileHtmlId: getHtmlId(file),
+            diffs: diffs,
+            filePath: filePathTemplate.render({
+                fileDiffName: filenameDiff(file),
+            }, {
+                fileIcon: fileIconTemplate,
+                fileTag: fileTagTemplate,
+            }),
+        });
+    }
+    generateEmptyDiff() {
+        return this.hoganUtils.render(genericTemplatesPath$1, 'empty-diff', {
+            contentClass: 'd2h-code-line',
+            CSSLineClass: CSSLineClass,
+        });
+    }
+    generateFileHtml(file) {
+        const matcher = newMatcherFn(newDistanceFn((e) => deconstructLine(e.content, file.isCombined).content));
+        return file.blocks
+            .map(block => {
+            let lines = this.hoganUtils.render(genericTemplatesPath$1, 'block-header', {
+                CSSLineClass: CSSLineClass,
+                blockHeader: file.isTooBig ? block.header : escapeForHtml(block.header),
+                lineClass: 'd2h-code-linenumber',
+                contentClass: 'd2h-code-line',
+            });
+            this.applyLineGroupping(block).forEach(([contextLines, oldLines, newLines]) => {
+                if (oldLines.length && newLines.length && !contextLines.length) {
+                    this.applyRematchMatching(oldLines, newLines, matcher).map(([oldLines, newLines]) => {
+                        const { left, right } = this.processChangedLines(file, file.isCombined, oldLines, newLines);
+                        lines += left;
+                        lines += right;
+                    });
+                }
+                else if (contextLines.length) {
+                    contextLines.forEach(line => {
+                        const { prefix, content } = deconstructLine(line.content, file.isCombined);
+                        lines += this.generateSingleLineHtml(file, {
+                            type: CSSLineClass.CONTEXT,
+                            prefix: prefix,
+                            content: content,
+                            oldNumber: line.oldNumber,
+                            newNumber: line.newNumber,
+                        });
+                    });
+                }
+                else if (oldLines.length || newLines.length) {
+                    const { left, right } = this.processChangedLines(file, file.isCombined, oldLines, newLines);
+                    lines += left;
+                    lines += right;
+                }
+                else {
+                    console.error('Unknown state reached while processing groups of lines', contextLines, oldLines, newLines);
+                }
+            });
+            return lines;
+        })
+            .join('\n');
+    }
+    applyLineGroupping(block) {
+        const blockLinesGroups = [];
+        let oldLines = [];
+        let newLines = [];
+        for (let i = 0; i < block.lines.length; i++) {
+            const diffLine = block.lines[i];
+            if ((diffLine.type !== LineType.INSERT && newLines.length) ||
+                (diffLine.type === LineType.CONTEXT && oldLines.length > 0)) {
+                blockLinesGroups.push([[], oldLines, newLines]);
+                oldLines = [];
+                newLines = [];
+            }
+            if (diffLine.type === LineType.CONTEXT) {
+                blockLinesGroups.push([[diffLine], [], []]);
+            }
+            else if (diffLine.type === LineType.INSERT && oldLines.length === 0) {
+                blockLinesGroups.push([[], [], [diffLine]]);
+            }
+            else if (diffLine.type === LineType.INSERT && oldLines.length > 0) {
+                newLines.push(diffLine);
+            }
+            else if (diffLine.type === LineType.DELETE) {
+                oldLines.push(diffLine);
+            }
+        }
+        if (oldLines.length || newLines.length) {
+            blockLinesGroups.push([[], oldLines, newLines]);
+            oldLines = [];
+            newLines = [];
+        }
+        return blockLinesGroups;
+    }
+    applyRematchMatching(oldLines, newLines, matcher) {
+        const comparisons = oldLines.length * newLines.length;
+        const maxLineSizeInBlock = Math.max.apply(null, [0].concat(oldLines.concat(newLines).map(elem => elem.content.length)));
+        const doMatching = comparisons < this.config.matchingMaxComparisons &&
+            maxLineSizeInBlock < this.config.maxLineSizeInBlockForComparison &&
+            (this.config.matching === 'lines' || this.config.matching === 'words');
+        return doMatching ? matcher(oldLines, newLines) : [[oldLines, newLines]];
+    }
+    processChangedLines(file, isCombined, oldLines, newLines) {
+        const fileHtml = {
+            right: '',
+            left: '',
+        };
+        const maxLinesNumber = Math.max(oldLines.length, newLines.length);
+        for (let i = 0; i < maxLinesNumber; i++) {
+            const oldLine = oldLines[i];
+            const newLine = newLines[i];
+            const diff = oldLine !== undefined && newLine !== undefined
+                ? diffHighlight(oldLine.content, newLine.content, isCombined, this.config)
+                : undefined;
+            const preparedOldLine = oldLine !== undefined && oldLine.oldNumber !== undefined
+                ? Object.assign(Object.assign({}, (diff !== undefined
+                    ? {
+                        prefix: diff.oldLine.prefix,
+                        content: diff.oldLine.content,
+                        type: CSSLineClass.DELETE_CHANGES,
+                    }
+                    : Object.assign(Object.assign({}, deconstructLine(oldLine.content, isCombined)), { type: toCSSClass(oldLine.type) }))), { oldNumber: oldLine.oldNumber, newNumber: oldLine.newNumber }) : undefined;
+            const preparedNewLine = newLine !== undefined && newLine.newNumber !== undefined
+                ? Object.assign(Object.assign({}, (diff !== undefined
+                    ? {
+                        prefix: diff.newLine.prefix,
+                        content: diff.newLine.content,
+                        type: CSSLineClass.INSERT_CHANGES,
+                    }
+                    : Object.assign(Object.assign({}, deconstructLine(newLine.content, isCombined)), { type: toCSSClass(newLine.type) }))), { oldNumber: newLine.oldNumber, newNumber: newLine.newNumber }) : undefined;
+            const { left, right } = this.generateLineHtml(file, preparedOldLine, preparedNewLine);
+            fileHtml.left += left;
+            fileHtml.right += right;
+        }
+        return fileHtml;
+    }
+    generateLineHtml(file, oldLine, newLine) {
+        return {
+            left: this.generateSingleLineHtml(file, oldLine),
+            right: this.generateSingleLineHtml(file, newLine),
+        };
+    }
+    generateSingleLineHtml(file, line) {
+        if (line === undefined)
+            return '';
+        const lineNumberHtml = this.hoganUtils.render(baseTemplatesPath$1, 'numbers', {
+            oldNumber: line.oldNumber || '',
+            newNumber: line.newNumber || '',
+        });
+        return this.hoganUtils.render(genericTemplatesPath$1, 'line', {
+            type: line.type,
+            lineClass: 'd2h-code-linenumber',
+            contentClass: 'd2h-code-line',
+            prefix: line.prefix === ' ' ? '&nbsp;' : line.prefix,
+            content: line.content,
+            lineNumber: lineNumberHtml,
+            line,
+            file,
+        });
+    }
+}
+
+const defaultSideBySideRendererConfig = Object.assign(Object.assign({}, defaultRenderConfig), { renderNothingWhenEmpty: false, matchingMaxComparisons: 2500, maxLineSizeInBlockForComparison: 200 });
+const genericTemplatesPath = 'generic';
+const baseTemplatesPath = 'side-by-side';
+const iconsBaseTemplatesPath = 'icon';
+const tagsBaseTemplatesPath = 'tag';
+class SideBySideRenderer {
+    constructor(hoganUtils, config = {}) {
+        this.hoganUtils = hoganUtils;
+        this.config = Object.assign(Object.assign({}, defaultSideBySideRendererConfig), config);
+    }
+    render(diffFiles) {
+        const diffsHtml = diffFiles
+            .map(file => {
+            let diffs;
+            if (file.blocks.length) {
+                diffs = this.generateFileHtml(file);
+            }
+            else {
+                diffs = this.generateEmptyDiff();
+            }
+            return this.makeFileDiffHtml(file, diffs);
+        })
+            .join('\n');
+        return this.hoganUtils.render(genericTemplatesPath, 'wrapper', {
+            colorScheme: colorSchemeToCss(this.config.colorScheme),
+            content: diffsHtml,
+        });
+    }
+    makeFileDiffHtml(file, diffs) {
+        if (this.config.renderNothingWhenEmpty && Array.isArray(file.blocks) && file.blocks.length === 0)
+            return '';
+        const fileDiffTemplate = this.hoganUtils.template(baseTemplatesPath, 'file-diff');
+        const filePathTemplate = this.hoganUtils.template(genericTemplatesPath, 'file-path');
+        const fileIconTemplate = this.hoganUtils.template(iconsBaseTemplatesPath, 'file');
+        const fileTagTemplate = this.hoganUtils.template(tagsBaseTemplatesPath, getFileIcon(file));
+        return fileDiffTemplate.render({
+            file: file,
+            fileHtmlId: getHtmlId(file),
+            diffs: diffs,
+            filePath: filePathTemplate.render({
+                fileDiffName: filenameDiff(file),
+            }, {
+                fileIcon: fileIconTemplate,
+                fileTag: fileTagTemplate,
+            }),
+        });
+    }
+    generateEmptyDiff() {
+        return {
+            right: '',
+            left: this.hoganUtils.render(genericTemplatesPath, 'empty-diff', {
+                contentClass: 'd2h-code-side-line',
+                CSSLineClass: CSSLineClass,
+            }),
+        };
+    }
+    generateFileHtml(file) {
+        const matcher = newMatcherFn(newDistanceFn((e) => deconstructLine(e.content, file.isCombined).content));
+        return file.blocks
+            .map(block => {
+            const fileHtml = {
+                left: this.makeHeaderHtml(block.header, file),
+                right: this.makeHeaderHtml(''),
+            };
+            this.applyLineGroupping(block).forEach(([contextLines, oldLines, newLines]) => {
+                if (oldLines.length && newLines.length && !contextLines.length) {
+                    this.applyRematchMatching(oldLines, newLines, matcher).map(([oldLines, newLines]) => {
+                        const { left, right } = this.processChangedLines(file.isCombined, oldLines, newLines);
+                        fileHtml.left += left;
+                        fileHtml.right += right;
+                    });
+                }
+                else if (contextLines.length) {
+                    contextLines.forEach(line => {
+                        const { prefix, content } = deconstructLine(line.content, file.isCombined);
+                        const { left, right } = this.generateLineHtml({
+                            type: CSSLineClass.CONTEXT,
+                            prefix: prefix,
+                            content: content,
+                            number: line.oldNumber,
+                        }, {
+                            type: CSSLineClass.CONTEXT,
+                            prefix: prefix,
+                            content: content,
+                            number: line.newNumber,
+                        });
+                        fileHtml.left += left;
+                        fileHtml.right += right;
+                    });
+                }
+                else if (oldLines.length || newLines.length) {
+                    const { left, right } = this.processChangedLines(file.isCombined, oldLines, newLines);
+                    fileHtml.left += left;
+                    fileHtml.right += right;
+                }
+                else {
+                    console.error('Unknown state reached while processing groups of lines', contextLines, oldLines, newLines);
+                }
+            });
+            return fileHtml;
+        })
+            .reduce((accomulated, html) => {
+            return { left: accomulated.left + html.left, right: accomulated.right + html.right };
+        }, { left: '', right: '' });
+    }
+    applyLineGroupping(block) {
+        const blockLinesGroups = [];
+        let oldLines = [];
+        let newLines = [];
+        for (let i = 0; i < block.lines.length; i++) {
+            const diffLine = block.lines[i];
+            if ((diffLine.type !== LineType.INSERT && newLines.length) ||
+                (diffLine.type === LineType.CONTEXT && oldLines.length > 0)) {
+                blockLinesGroups.push([[], oldLines, newLines]);
+                oldLines = [];
+                newLines = [];
+            }
+            if (diffLine.type === LineType.CONTEXT) {
+                blockLinesGroups.push([[diffLine], [], []]);
+            }
+            else if (diffLine.type === LineType.INSERT && oldLines.length === 0) {
+                blockLinesGroups.push([[], [], [diffLine]]);
+            }
+            else if (diffLine.type === LineType.INSERT && oldLines.length > 0) {
+                newLines.push(diffLine);
+            }
+            else if (diffLine.type === LineType.DELETE) {
+                oldLines.push(diffLine);
+            }
+        }
+        if (oldLines.length || newLines.length) {
+            blockLinesGroups.push([[], oldLines, newLines]);
+            oldLines = [];
+            newLines = [];
+        }
+        return blockLinesGroups;
+    }
+    applyRematchMatching(oldLines, newLines, matcher) {
+        const comparisons = oldLines.length * newLines.length;
+        const maxLineSizeInBlock = Math.max.apply(null, [0].concat(oldLines.concat(newLines).map(elem => elem.content.length)));
+        const doMatching = comparisons < this.config.matchingMaxComparisons &&
+            maxLineSizeInBlock < this.config.maxLineSizeInBlockForComparison &&
+            (this.config.matching === 'lines' || this.config.matching === 'words');
+        return doMatching ? matcher(oldLines, newLines) : [[oldLines, newLines]];
+    }
+    makeHeaderHtml(blockHeader, file) {
+        return this.hoganUtils.render(genericTemplatesPath, 'block-header', {
+            CSSLineClass: CSSLineClass,
+            blockHeader: (file === null || file === undefined ? undefined : file.isTooBig) ? blockHeader : escapeForHtml(blockHeader),
+            lineClass: 'd2h-code-side-linenumber',
+            contentClass: 'd2h-code-side-line',
+        });
+    }
+    processChangedLines(isCombined, oldLines, newLines) {
+        const fileHtml = {
+            right: '',
+            left: '',
+        };
+        const maxLinesNumber = Math.max(oldLines.length, newLines.length);
+        for (let i = 0; i < maxLinesNumber; i++) {
+            const oldLine = oldLines[i];
+            const newLine = newLines[i];
+            const diff = oldLine !== undefined && newLine !== undefined
+                ? diffHighlight(oldLine.content, newLine.content, isCombined, this.config)
+                : undefined;
+            const preparedOldLine = oldLine !== undefined && oldLine.oldNumber !== undefined
+                ? Object.assign(Object.assign({}, (diff !== undefined
+                    ? {
+                        prefix: diff.oldLine.prefix,
+                        content: diff.oldLine.content,
+                        type: CSSLineClass.DELETE_CHANGES,
+                    }
+                    : Object.assign(Object.assign({}, deconstructLine(oldLine.content, isCombined)), { type: toCSSClass(oldLine.type) }))), { number: oldLine.oldNumber }) : undefined;
+            const preparedNewLine = newLine !== undefined && newLine.newNumber !== undefined
+                ? Object.assign(Object.assign({}, (diff !== undefined
+                    ? {
+                        prefix: diff.newLine.prefix,
+                        content: diff.newLine.content,
+                        type: CSSLineClass.INSERT_CHANGES,
+                    }
+                    : Object.assign(Object.assign({}, deconstructLine(newLine.content, isCombined)), { type: toCSSClass(newLine.type) }))), { number: newLine.newNumber }) : undefined;
+            const { left, right } = this.generateLineHtml(preparedOldLine, preparedNewLine);
+            fileHtml.left += left;
+            fileHtml.right += right;
+        }
+        return fileHtml;
+    }
+    generateLineHtml(oldLine, newLine) {
+        return {
+            left: this.generateSingleHtml(oldLine),
+            right: this.generateSingleHtml(newLine),
+        };
+    }
+    generateSingleHtml(line) {
+        const lineClass = 'd2h-code-side-linenumber';
+        const contentClass = 'd2h-code-side-line';
+        return this.hoganUtils.render(genericTemplatesPath, 'line', {
+            type: (line === null || line === undefined ? undefined : line.type) || `${CSSLineClass.CONTEXT} d2h-emptyplaceholder`,
+            lineClass: line !== undefined ? lineClass : `${lineClass} d2h-code-side-emptyplaceholder`,
+            contentClass: line !== undefined ? contentClass : `${contentClass} d2h-code-side-emptyplaceholder`,
+            prefix: (line === null || line === undefined ? undefined : line.prefix) === ' ' ? '&nbsp;' : line === null || line === undefined ? undefined : line.prefix,
+            content: line === null || line === undefined ? undefined : line.content,
+            lineNumber: line === null || line === undefined ? undefined : line.number,
+        });
+    }
+}
+
+var compiler = {};
+
+/*
+ *  Copyright 2011 Twitter, Inc.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+var hasRequiredCompiler;
+
+function requireCompiler () {
+	if (hasRequiredCompiler) return compiler;
+	hasRequiredCompiler = 1;
+	(function (exports) {
+		(function (Hogan) {
+		  // Setup regex  assignments
+		  // remove whitespace according to Mustache spec
+		  var rIsWhitespace = /\S/,
+		      rQuot = /\"/g,
+		      rNewline =  /\n/g,
+		      rCr = /\r/g,
+		      rSlash = /\\/g,
+		      rLineSep = /\u2028/,
+		      rParagraphSep = /\u2029/;
+
+		  Hogan.tags = {
+		    '#': 1, '^': 2, '<': 3, '$': 4,
+		    '/': 5, '!': 6, '>': 7, '=': 8, '_v': 9,
+		    '{': 10, '&': 11, '_t': 12
+		  };
+
+		  Hogan.scan = function scan(text, delimiters) {
+		    var len = text.length,
+		        IN_TEXT = 0,
+		        IN_TAG_TYPE = 1,
+		        IN_TAG = 2,
+		        state = IN_TEXT,
+		        tagType = null,
+		        tag = null,
+		        buf = '',
+		        tokens = [],
+		        seenTag = false,
+		        i = 0,
+		        lineStart = 0,
+		        otag = '{{',
+		        ctag = '}}';
+
+		    function addBuf() {
+		      if (buf.length > 0) {
+		        tokens.push({tag: '_t', text: new String(buf)});
+		        buf = '';
+		      }
+		    }
+
+		    function lineIsWhitespace() {
+		      var isAllWhitespace = true;
+		      for (var j = lineStart; j < tokens.length; j++) {
+		        isAllWhitespace =
+		          (Hogan.tags[tokens[j].tag] < Hogan.tags['_v']) ||
+		          (tokens[j].tag == '_t' && tokens[j].text.match(rIsWhitespace) === null);
+		        if (!isAllWhitespace) {
+		          return false;
+		        }
+		      }
+
+		      return isAllWhitespace;
+		    }
+
+		    function filterLine(haveSeenTag, noNewLine) {
+		      addBuf();
+
+		      if (haveSeenTag && lineIsWhitespace()) {
+		        for (var j = lineStart, next; j < tokens.length; j++) {
+		          if (tokens[j].text) {
+		            if ((next = tokens[j+1]) && next.tag == '>') {
+		              // set indent to token value
+		              next.indent = tokens[j].text.toString();
+		            }
+		            tokens.splice(j, 1);
+		          }
+		        }
+		      } else if (!noNewLine) {
+		        tokens.push({tag:'\n'});
+		      }
+
+		      seenTag = false;
+		      lineStart = tokens.length;
+		    }
+
+		    function changeDelimiters(text, index) {
+		      var close = '=' + ctag,
+		          closeIndex = text.indexOf(close, index),
+		          delimiters = trim(
+		            text.substring(text.indexOf('=', index) + 1, closeIndex)
+		          ).split(' ');
+
+		      otag = delimiters[0];
+		      ctag = delimiters[delimiters.length - 1];
+
+		      return closeIndex + close.length - 1;
+		    }
+
+		    if (delimiters) {
+		      delimiters = delimiters.split(' ');
+		      otag = delimiters[0];
+		      ctag = delimiters[1];
+		    }
+
+		    for (i = 0; i < len; i++) {
+		      if (state == IN_TEXT) {
+		        if (tagChange(otag, text, i)) {
+		          --i;
+		          addBuf();
+		          state = IN_TAG_TYPE;
+		        } else {
+		          if (text.charAt(i) == '\n') {
+		            filterLine(seenTag);
+		          } else {
+		            buf += text.charAt(i);
+		          }
+		        }
+		      } else if (state == IN_TAG_TYPE) {
+		        i += otag.length - 1;
+		        tag = Hogan.tags[text.charAt(i + 1)];
+		        tagType = tag ? text.charAt(i + 1) : '_v';
+		        if (tagType == '=') {
+		          i = changeDelimiters(text, i);
+		          state = IN_TEXT;
+		        } else {
+		          if (tag) {
+		            i++;
+		          }
+		          state = IN_TAG;
+		        }
+		        seenTag = i;
+		      } else {
+		        if (tagChange(ctag, text, i)) {
+		          tokens.push({tag: tagType, n: trim(buf), otag: otag, ctag: ctag,
+		                       i: (tagType == '/') ? seenTag - otag.length : i + ctag.length});
+		          buf = '';
+		          i += ctag.length - 1;
+		          state = IN_TEXT;
+		          if (tagType == '{') {
+		            if (ctag == '}}') {
+		              i++;
+		            } else {
+		              cleanTripleStache(tokens[tokens.length - 1]);
+		            }
+		          }
+		        } else {
+		          buf += text.charAt(i);
+		        }
+		      }
+		    }
+
+		    filterLine(seenTag, true);
+
+		    return tokens;
+		  };
+
+		  function cleanTripleStache(token) {
+		    if (token.n.substr(token.n.length - 1) === '}') {
+		      token.n = token.n.substring(0, token.n.length - 1);
+		    }
+		  }
+
+		  function trim(s) {
+		    if (s.trim) {
+		      return s.trim();
+		    }
+
+		    return s.replace(/^\s*|\s*$/g, '');
+		  }
+
+		  function tagChange(tag, text, index) {
+		    if (text.charAt(index) != tag.charAt(0)) {
+		      return false;
+		    }
+
+		    for (var i = 1, l = tag.length; i < l; i++) {
+		      if (text.charAt(index + i) != tag.charAt(i)) {
+		        return false;
+		      }
+		    }
+
+		    return true;
+		  }
+
+		  // the tags allowed inside super templates
+		  var allowedInSuper = {'_t': true, '\n': true, '$': true, '/': true};
+
+		  function buildTree(tokens, kind, stack, customTags) {
+		    var instructions = [],
+		        opener = null,
+		        tail = null,
+		        token = null;
+
+		    tail = stack[stack.length - 1];
+
+		    while (tokens.length > 0) {
+		      token = tokens.shift();
+
+		      if (tail && tail.tag == '<' && !(token.tag in allowedInSuper)) {
+		        throw new Error('Illegal content in < super tag.');
+		      }
+
+		      if (Hogan.tags[token.tag] <= Hogan.tags['$'] || isOpener(token, customTags)) {
+		        stack.push(token);
+		        token.nodes = buildTree(tokens, token.tag, stack, customTags);
+		      } else if (token.tag == '/') {
+		        if (stack.length === 0) {
+		          throw new Error('Closing tag without opener: /' + token.n);
+		        }
+		        opener = stack.pop();
+		        if (token.n != opener.n && !isCloser(token.n, opener.n, customTags)) {
+		          throw new Error('Nesting error: ' + opener.n + ' vs. ' + token.n);
+		        }
+		        opener.end = token.i;
+		        return instructions;
+		      } else if (token.tag == '\n') {
+		        token.last = (tokens.length == 0) || (tokens[0].tag == '\n');
+		      }
+
+		      instructions.push(token);
+		    }
+
+		    if (stack.length > 0) {
+		      throw new Error('missing closing tag: ' + stack.pop().n);
+		    }
+
+		    return instructions;
+		  }
+
+		  function isOpener(token, tags) {
+		    for (var i = 0, l = tags.length; i < l; i++) {
+		      if (tags[i].o == token.n) {
+		        token.tag = '#';
+		        return true;
+		      }
+		    }
+		  }
+
+		  function isCloser(close, open, tags) {
+		    for (var i = 0, l = tags.length; i < l; i++) {
+		      if (tags[i].c == close && tags[i].o == open) {
+		        return true;
+		      }
+		    }
+		  }
+
+		  function stringifySubstitutions(obj) {
+		    var items = [];
+		    for (var key in obj) {
+		      items.push('"' + esc(key) + '": function(c,p,t,i) {' + obj[key] + '}');
+		    }
+		    return "{ " + items.join(",") + " }";
+		  }
+
+		  function stringifyPartials(codeObj) {
+		    var partials = [];
+		    for (var key in codeObj.partials) {
+		      partials.push('"' + esc(key) + '":{name:"' + esc(codeObj.partials[key].name) + '", ' + stringifyPartials(codeObj.partials[key]) + "}");
+		    }
+		    return "partials: {" + partials.join(",") + "}, subs: " + stringifySubstitutions(codeObj.subs);
+		  }
+
+		  Hogan.stringify = function(codeObj, text, options) {
+		    return "{code: function (c,p,i) { " + Hogan.wrapMain(codeObj.code) + " }," + stringifyPartials(codeObj) +  "}";
+		  };
+
+		  var serialNo = 0;
+		  Hogan.generate = function(tree, text, options) {
+		    serialNo = 0;
+		    var context = { code: '', subs: {}, partials: {} };
+		    Hogan.walk(tree, context);
+
+		    if (options.asString) {
+		      return this.stringify(context, text, options);
+		    }
+
+		    return this.makeTemplate(context, text, options);
+		  };
+
+		  Hogan.wrapMain = function(code) {
+		    return 'var t=this;t.b(i=i||"");' + code + 'return t.fl();';
+		  };
+
+		  Hogan.template = Hogan.Template;
+
+		  Hogan.makeTemplate = function(codeObj, text, options) {
+		    var template = this.makePartials(codeObj);
+		    template.code = new Function('c', 'p', 'i', this.wrapMain(codeObj.code));
+		    return new this.template(template, text, this, options);
+		  };
+
+		  Hogan.makePartials = function(codeObj) {
+		    var key, template = {subs: {}, partials: codeObj.partials, name: codeObj.name};
+		    for (key in template.partials) {
+		      template.partials[key] = this.makePartials(template.partials[key]);
+		    }
+		    for (key in codeObj.subs) {
+		      template.subs[key] = new Function('c', 'p', 't', 'i', codeObj.subs[key]);
+		    }
+		    return template;
+		  };
+
+		  function esc(s) {
+		    return s.replace(rSlash, '\\\\')
+		            .replace(rQuot, '\\\"')
+		            .replace(rNewline, '\\n')
+		            .replace(rCr, '\\r')
+		            .replace(rLineSep, '\\u2028')
+		            .replace(rParagraphSep, '\\u2029');
+		  }
+
+		  function chooseMethod(s) {
+		    return (~s.indexOf('.')) ? 'd' : 'f';
+		  }
+
+		  function createPartial(node, context) {
+		    var prefix = "<" + (context.prefix || "");
+		    var sym = prefix + node.n + serialNo++;
+		    context.partials[sym] = {name: node.n, partials: {}};
+		    context.code += 't.b(t.rp("' +  esc(sym) + '",c,p,"' + (node.indent || '') + '"));';
+		    return sym;
+		  }
+
+		  Hogan.codegen = {
+		    '#': function(node, context) {
+		      context.code += 'if(t.s(t.' + chooseMethod(node.n) + '("' + esc(node.n) + '",c,p,1),' +
+		                      'c,p,0,' + node.i + ',' + node.end + ',"' + node.otag + " " + node.ctag + '")){' +
+		                      't.rs(c,p,' + 'function(c,p,t){';
+		      Hogan.walk(node.nodes, context);
+		      context.code += '});c.pop();}';
+		    },
+
+		    '^': function(node, context) {
+		      context.code += 'if(!t.s(t.' + chooseMethod(node.n) + '("' + esc(node.n) + '",c,p,1),c,p,1,0,0,"")){';
+		      Hogan.walk(node.nodes, context);
+		      context.code += '};';
+		    },
+
+		    '>': createPartial,
+		    '<': function(node, context) {
+		      var ctx = {partials: {}, code: '', subs: {}, inPartial: true};
+		      Hogan.walk(node.nodes, ctx);
+		      var template = context.partials[createPartial(node, context)];
+		      template.subs = ctx.subs;
+		      template.partials = ctx.partials;
+		    },
+
+		    '$': function(node, context) {
+		      var ctx = {subs: {}, code: '', partials: context.partials, prefix: node.n};
+		      Hogan.walk(node.nodes, ctx);
+		      context.subs[node.n] = ctx.code;
+		      if (!context.inPartial) {
+		        context.code += 't.sub("' + esc(node.n) + '",c,p,i);';
+		      }
+		    },
+
+		    '\n': function(node, context) {
+		      context.code += write('"\\n"' + (node.last ? '' : ' + i'));
+		    },
+
+		    '_v': function(node, context) {
+		      context.code += 't.b(t.v(t.' + chooseMethod(node.n) + '("' + esc(node.n) + '",c,p,0)));';
+		    },
+
+		    '_t': function(node, context) {
+		      context.code += write('"' + esc(node.text) + '"');
+		    },
+
+		    '{': tripleStache,
+
+		    '&': tripleStache
+		  };
+
+		  function tripleStache(node, context) {
+		    context.code += 't.b(t.t(t.' + chooseMethod(node.n) + '("' + esc(node.n) + '",c,p,0)));';
+		  }
+
+		  function write(s) {
+		    return 't.b(' + s + ');';
+		  }
+
+		  Hogan.walk = function(nodelist, context) {
+		    var func;
+		    for (var i = 0, l = nodelist.length; i < l; i++) {
+		      func = Hogan.codegen[nodelist[i].tag];
+		      func && func(nodelist[i], context);
+		    }
+		    return context;
+		  };
+
+		  Hogan.parse = function(tokens, text, options) {
+		    options = options || {};
+		    return buildTree(tokens, '', [], options.sectionTags || []);
+		  };
+
+		  Hogan.cache = {};
+
+		  Hogan.cacheKey = function(text, options) {
+		    return [text, !!options.asString, !!options.disableLambda, options.delimiters, !!options.modelGet].join('||');
+		  };
+
+		  Hogan.compile = function(text, options) {
+		    options = options || {};
+		    var key = Hogan.cacheKey(text, options);
+		    var template = this.cache[key];
+
+		    if (template) {
+		      var partials = template.partials;
+		      for (var name in partials) {
+		        delete partials[name].instance;
+		      }
+		      return template;
+		    }
+
+		    template = this.generate(this.parse(this.scan(text, options.delimiters), text, options), text, options);
+		    return this.cache[key] = template;
+		  };
+		})(exports ); 
+	} (compiler));
+	return compiler;
+}
+
+var template = {};
+
+/*
+ *  Copyright 2011 Twitter, Inc.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+var hasRequiredTemplate;
+
+function requireTemplate () {
+	if (hasRequiredTemplate) return template;
+	hasRequiredTemplate = 1;
+	(function (exports) {
+
+		(function (Hogan) {
+		  Hogan.Template = function (codeObj, text, compiler, options) {
+		    codeObj = codeObj || {};
+		    this.r = codeObj.code || this.r;
+		    this.c = compiler;
+		    this.options = options || {};
+		    this.text = text || '';
+		    this.partials = codeObj.partials || {};
+		    this.subs = codeObj.subs || {};
+		    this.buf = '';
+		  };
+
+		  Hogan.Template.prototype = {
+		    // render: replaced by generated code.
+		    r: function (context, partials, indent) { return ''; },
+
+		    // variable escaping
+		    v: hoganEscape,
+
+		    // triple stache
+		    t: coerceToString,
+
+		    render: function render(context, partials, indent) {
+		      return this.ri([context], partials || {}, indent);
+		    },
+
+		    // render internal -- a hook for overrides that catches partials too
+		    ri: function (context, partials, indent) {
+		      return this.r(context, partials, indent);
+		    },
+
+		    // ensurePartial
+		    ep: function(symbol, partials) {
+		      var partial = this.partials[symbol];
+
+		      // check to see that if we've instantiated this partial before
+		      var template = partials[partial.name];
+		      if (partial.instance && partial.base == template) {
+		        return partial.instance;
+		      }
+
+		      if (typeof template == 'string') {
+		        if (!this.c) {
+		          throw new Error("No compiler available.");
+		        }
+		        template = this.c.compile(template, this.options);
+		      }
+
+		      if (!template) {
+		        return null;
+		      }
+
+		      // We use this to check whether the partials dictionary has changed
+		      this.partials[symbol].base = template;
+
+		      if (partial.subs) {
+		        // Make sure we consider parent template now
+		        if (!partials.stackText) partials.stackText = {};
+		        for (key in partial.subs) {
+		          if (!partials.stackText[key]) {
+		            partials.stackText[key] = (this.activeSub !== undefined && partials.stackText[this.activeSub]) ? partials.stackText[this.activeSub] : this.text;
+		          }
+		        }
+		        template = createSpecializedPartial(template, partial.subs, partial.partials,
+		          this.stackSubs, this.stackPartials, partials.stackText);
+		      }
+		      this.partials[symbol].instance = template;
+
+		      return template;
+		    },
+
+		    // tries to find a partial in the current scope and render it
+		    rp: function(symbol, context, partials, indent) {
+		      var partial = this.ep(symbol, partials);
+		      if (!partial) {
+		        return '';
+		      }
+
+		      return partial.ri(context, partials, indent);
+		    },
+
+		    // render a section
+		    rs: function(context, partials, section) {
+		      var tail = context[context.length - 1];
+
+		      if (!isArray(tail)) {
+		        section(context, partials, this);
+		        return;
+		      }
+
+		      for (var i = 0; i < tail.length; i++) {
+		        context.push(tail[i]);
+		        section(context, partials, this);
+		        context.pop();
+		      }
+		    },
+
+		    // maybe start a section
+		    s: function(val, ctx, partials, inverted, start, end, tags) {
+		      var pass;
+
+		      if (isArray(val) && val.length === 0) {
+		        return false;
+		      }
+
+		      if (typeof val == 'function') {
+		        val = this.ms(val, ctx, partials, inverted, start, end, tags);
+		      }
+
+		      pass = !!val;
+
+		      if (!inverted && pass && ctx) {
+		        ctx.push((typeof val == 'object') ? val : ctx[ctx.length - 1]);
+		      }
+
+		      return pass;
+		    },
+
+		    // find values with dotted names
+		    d: function(key, ctx, partials, returnFound) {
+		      var found,
+		          names = key.split('.'),
+		          val = this.f(names[0], ctx, partials, returnFound),
+		          doModelGet = this.options.modelGet,
+		          cx = null;
+
+		      if (key === '.' && isArray(ctx[ctx.length - 2])) {
+		        val = ctx[ctx.length - 1];
+		      } else {
+		        for (var i = 1; i < names.length; i++) {
+		          found = findInScope(names[i], val, doModelGet);
+		          if (found !== undefined) {
+		            cx = val;
+		            val = found;
+		          } else {
+		            val = '';
+		          }
+		        }
+		      }
+
+		      if (returnFound && !val) {
+		        return false;
+		      }
+
+		      if (!returnFound && typeof val == 'function') {
+		        ctx.push(cx);
+		        val = this.mv(val, ctx, partials);
+		        ctx.pop();
+		      }
+
+		      return val;
+		    },
+
+		    // find values with normal names
+		    f: function(key, ctx, partials, returnFound) {
+		      var val = false,
+		          v = null,
+		          found = false,
+		          doModelGet = this.options.modelGet;
+
+		      for (var i = ctx.length - 1; i >= 0; i--) {
+		        v = ctx[i];
+		        val = findInScope(key, v, doModelGet);
+		        if (val !== undefined) {
+		          found = true;
+		          break;
+		        }
+		      }
+
+		      if (!found) {
+		        return (returnFound) ? false : "";
+		      }
+
+		      if (!returnFound && typeof val == 'function') {
+		        val = this.mv(val, ctx, partials);
+		      }
+
+		      return val;
+		    },
+
+		    // higher order templates
+		    ls: function(func, cx, partials, text, tags) {
+		      var oldTags = this.options.delimiters;
+
+		      this.options.delimiters = tags;
+		      this.b(this.ct(coerceToString(func.call(cx, text)), cx, partials));
+		      this.options.delimiters = oldTags;
+
+		      return false;
+		    },
+
+		    // compile text
+		    ct: function(text, cx, partials) {
+		      if (this.options.disableLambda) {
+		        throw new Error('Lambda features disabled.');
+		      }
+		      return this.c.compile(text, this.options).render(cx, partials);
+		    },
+
+		    // template result buffering
+		    b: function(s) { this.buf += s; },
+
+		    fl: function() { var r = this.buf; this.buf = ''; return r; },
+
+		    // method replace section
+		    ms: function(func, ctx, partials, inverted, start, end, tags) {
+		      var textSource,
+		          cx = ctx[ctx.length - 1],
+		          result = func.call(cx);
+
+		      if (typeof result == 'function') {
+		        if (inverted) {
+		          return true;
+		        } else {
+		          textSource = (this.activeSub && this.subsText && this.subsText[this.activeSub]) ? this.subsText[this.activeSub] : this.text;
+		          return this.ls(result, cx, partials, textSource.substring(start, end), tags);
+		        }
+		      }
+
+		      return result;
+		    },
+
+		    // method replace variable
+		    mv: function(func, ctx, partials) {
+		      var cx = ctx[ctx.length - 1];
+		      var result = func.call(cx);
+
+		      if (typeof result == 'function') {
+		        return this.ct(coerceToString(result.call(cx)), cx, partials);
+		      }
+
+		      return result;
+		    },
+
+		    sub: function(name, context, partials, indent) {
+		      var f = this.subs[name];
+		      if (f) {
+		        this.activeSub = name;
+		        f(context, partials, this, indent);
+		        this.activeSub = false;
+		      }
+		    }
+
+		  };
+
+		  //Find a key in an object
+		  function findInScope(key, scope, doModelGet) {
+		    var val;
+
+		    if (scope && typeof scope == 'object') {
+
+		      if (scope[key] !== undefined) {
+		        val = scope[key];
+
+		      // try lookup with get for backbone or similar model data
+		      } else if (doModelGet && scope.get && typeof scope.get == 'function') {
+		        val = scope.get(key);
+		      }
+		    }
+
+		    return val;
+		  }
+
+		  function createSpecializedPartial(instance, subs, partials, stackSubs, stackPartials, stackText) {
+		    function PartialTemplate() {}		    PartialTemplate.prototype = instance;
+		    function Substitutions() {}		    Substitutions.prototype = instance.subs;
+		    var key;
+		    var partial = new PartialTemplate();
+		    partial.subs = new Substitutions();
+		    partial.subsText = {};  //hehe. substext.
+		    partial.buf = '';
+
+		    stackSubs = stackSubs || {};
+		    partial.stackSubs = stackSubs;
+		    partial.subsText = stackText;
+		    for (key in subs) {
+		      if (!stackSubs[key]) stackSubs[key] = subs[key];
+		    }
+		    for (key in stackSubs) {
+		      partial.subs[key] = stackSubs[key];
+		    }
+
+		    stackPartials = stackPartials || {};
+		    partial.stackPartials = stackPartials;
+		    for (key in partials) {
+		      if (!stackPartials[key]) stackPartials[key] = partials[key];
+		    }
+		    for (key in stackPartials) {
+		      partial.partials[key] = stackPartials[key];
+		    }
+
+		    return partial;
+		  }
+
+		  var rAmp = /&/g,
+		      rLt = /</g,
+		      rGt = />/g,
+		      rApos = /\'/g,
+		      rQuot = /\"/g,
+		      hChars = /[&<>\"\']/;
+
+		  function coerceToString(val) {
+		    return String((val === null || val === undefined) ? '' : val);
+		  }
+
+		  function hoganEscape(str) {
+		    str = coerceToString(str);
+		    return hChars.test(str) ?
+		      str
+		        .replace(rAmp, '&amp;')
+		        .replace(rLt, '&lt;')
+		        .replace(rGt, '&gt;')
+		        .replace(rApos, '&#39;')
+		        .replace(rQuot, '&quot;') :
+		      str;
+		  }
+
+		  var isArray = Array.isArray || function(a) {
+		    return Object.prototype.toString.call(a) === '[object Array]';
+		  };
+
+		})(exports ); 
+	} (template));
+	return template;
+}
+
+/*
+ *  Copyright 2011 Twitter, Inc.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+var hogan;
+var hasRequiredHogan;
+
+function requireHogan () {
+	if (hasRequiredHogan) return hogan;
+	hasRequiredHogan = 1;
+	// This file is for use with Node.js. See dist/ for browser files.
+
+	var Hogan = requireCompiler();
+	Hogan.Template = requireTemplate().Template;
+	Hogan.template = Hogan.Template;
+	hogan = Hogan;
+	return hogan;
+}
+
+var hoganExports = requireHogan();
+
+const defaultTemplates = {};
+defaultTemplates["file-summary-line"] = new hoganExports.Template({ code: function (c, p, i) { var t = this; t.b(i = i || ""); t.b("<li class=\"d2h-file-list-line\">"); t.b("\n" + i); t.b("    <span class=\"d2h-file-name-wrapper\">"); t.b("\n" + i); t.b(t.rp("<fileIcon0", c, p, "      ")); t.b("      <a href=\"#"); t.b(t.v(t.f("fileHtmlId", c, p, 0))); t.b("\" class=\"d2h-file-name\">"); t.b(t.v(t.f("fileName", c, p, 0))); t.b("</a>"); t.b("\n" + i); t.b("      <span class=\"d2h-file-stats\">"); t.b("\n" + i); t.b("          <span class=\"d2h-lines-added\">"); t.b(t.v(t.f("addedLines", c, p, 0))); t.b("</span>"); t.b("\n" + i); t.b("          <span class=\"d2h-lines-deleted\">"); t.b(t.v(t.f("deletedLines", c, p, 0))); t.b("</span>"); t.b("\n" + i); t.b("      </span>"); t.b("\n" + i); t.b("    </span>"); t.b("\n" + i); t.b("</li>"); return t.fl(); }, partials: { "<fileIcon0": { name: "fileIcon", partials: {}, subs: {} } }, subs: {} });
+defaultTemplates["file-summary-wrapper"] = new hoganExports.Template({ code: function (c, p, i) { var t = this; t.b(i = i || ""); t.b("<div class=\"d2h-file-list-wrapper "); t.b(t.v(t.f("colorScheme", c, p, 0))); t.b("\">"); t.b("\n" + i); t.b("    <div class=\"d2h-file-list-header\">"); t.b("\n" + i); t.b("        <span class=\"d2h-file-list-title\">Files changed ("); t.b(t.v(t.f("filesNumber", c, p, 0))); t.b(")</span>"); t.b("\n" + i); t.b("        <a class=\"d2h-file-switch d2h-hide\">hide</a>"); t.b("\n" + i); t.b("        <a class=\"d2h-file-switch d2h-show\">show</a>"); t.b("\n" + i); t.b("    </div>"); t.b("\n" + i); t.b("    <ol class=\"d2h-file-list\">"); t.b("\n" + i); t.b("    "); t.b(t.t(t.f("files", c, p, 0))); t.b("\n" + i); t.b("    </ol>"); t.b("\n" + i); t.b("</div>"); return t.fl(); }, partials: {}, subs: {} });
+defaultTemplates["generic-block-header"] = new hoganExports.Template({ code: function (c, p, i) { var t = this; t.b(i = i || ""); t.b("<tr>"); t.b("\n" + i); t.b("    <td class=\""); t.b(t.v(t.f("lineClass", c, p, 0))); t.b(" "); t.b(t.v(t.d("CSSLineClass.INFO", c, p, 0))); t.b("\"></td>"); t.b("\n" + i); t.b("    <td class=\""); t.b(t.v(t.d("CSSLineClass.INFO", c, p, 0))); t.b("\">"); t.b("\n" + i); t.b("        <div class=\""); t.b(t.v(t.f("contentClass", c, p, 0))); t.b("\">"); if (t.s(t.f("blockHeader", c, p, 1), c, p, 0, 156, 173, "{{ }}")) {
+        t.rs(c, p, function (c, p, t) { t.b(t.t(t.f("blockHeader", c, p, 0))); });
+        c.pop();
+    } if (!t.s(t.f("blockHeader", c, p, 1), c, p, 1, 0, 0, "")) {
+        t.b("&nbsp;");
+    } t.b("</div>"); t.b("\n" + i); t.b("    </td>"); t.b("\n" + i); t.b("</tr>"); return t.fl(); }, partials: {}, subs: {} });
+defaultTemplates["generic-empty-diff"] = new hoganExports.Template({ code: function (c, p, i) { var t = this; t.b(i = i || ""); t.b("<tr>"); t.b("\n" + i); t.b("    <td class=\""); t.b(t.v(t.d("CSSLineClass.INFO", c, p, 0))); t.b("\">"); t.b("\n" + i); t.b("        <div class=\""); t.b(t.v(t.f("contentClass", c, p, 0))); t.b("\">"); t.b("\n" + i); t.b("            File without changes"); t.b("\n" + i); t.b("        </div>"); t.b("\n" + i); t.b("    </td>"); t.b("\n" + i); t.b("</tr>"); return t.fl(); }, partials: {}, subs: {} });
+defaultTemplates["generic-file-path"] = new hoganExports.Template({ code: function (c, p, i) { var t = this; t.b(i = i || ""); t.b("<span class=\"d2h-file-name-wrapper\">"); t.b("\n" + i); t.b(t.rp("<fileIcon0", c, p, "    ")); t.b("    <span class=\"d2h-file-name\">"); t.b(t.v(t.f("fileDiffName", c, p, 0))); t.b("</span>"); t.b("\n" + i); t.b(t.rp("<fileTag1", c, p, "    ")); t.b("</span>"); t.b("\n" + i); t.b("<label class=\"d2h-file-collapse\">"); t.b("\n" + i); t.b("    <input class=\"d2h-file-collapse-input\" type=\"checkbox\" name=\"viewed\" value=\"viewed\">"); t.b("\n" + i); t.b("    Viewed"); t.b("\n" + i); t.b("</label>"); return t.fl(); }, partials: { "<fileIcon0": { name: "fileIcon", partials: {}, subs: {} }, "<fileTag1": { name: "fileTag", partials: {}, subs: {} } }, subs: {} });
+defaultTemplates["generic-line"] = new hoganExports.Template({ code: function (c, p, i) { var t = this; t.b(i = i || ""); t.b("<tr>"); t.b("\n" + i); t.b("    <td class=\""); t.b(t.v(t.f("lineClass", c, p, 0))); t.b(" "); t.b(t.v(t.f("type", c, p, 0))); t.b("\">"); t.b("\n" + i); t.b("      "); t.b(t.t(t.f("lineNumber", c, p, 0))); t.b("\n" + i); t.b("    </td>"); t.b("\n" + i); t.b("    <td class=\""); t.b(t.v(t.f("type", c, p, 0))); t.b("\">"); t.b("\n" + i); t.b("        <div class=\""); t.b(t.v(t.f("contentClass", c, p, 0))); t.b("\">"); t.b("\n" + i); if (t.s(t.f("prefix", c, p, 1), c, p, 0, 162, 238, "{{ }}")) {
+        t.rs(c, p, function (c, p, t) { t.b("            <span class=\"d2h-code-line-prefix\">"); t.b(t.t(t.f("prefix", c, p, 0))); t.b("</span>"); t.b("\n" + i); });
+        c.pop();
+    } if (!t.s(t.f("prefix", c, p, 1), c, p, 1, 0, 0, "")) {
+        t.b("            <span class=\"d2h-code-line-prefix\">&nbsp;</span>");
+        t.b("\n" + i);
+    } if (t.s(t.f("content", c, p, 1), c, p, 0, 371, 445, "{{ }}")) {
+        t.rs(c, p, function (c, p, t) { t.b("            <span class=\"d2h-code-line-ctn\">"); t.b(t.t(t.f("content", c, p, 0))); t.b("</span>"); t.b("\n" + i); });
+        c.pop();
+    } if (!t.s(t.f("content", c, p, 1), c, p, 1, 0, 0, "")) {
+        t.b("            <span class=\"d2h-code-line-ctn\"><br></span>");
+        t.b("\n" + i);
+    } t.b("        </div>"); t.b("\n" + i); t.b("    </td>"); t.b("\n" + i); t.b("</tr>"); return t.fl(); }, partials: {}, subs: {} });
+defaultTemplates["generic-wrapper"] = new hoganExports.Template({ code: function (c, p, i) { var t = this; t.b(i = i || ""); t.b("<div class=\"d2h-wrapper "); t.b(t.v(t.f("colorScheme", c, p, 0))); t.b("\">"); t.b("\n" + i); t.b("    "); t.b(t.t(t.f("content", c, p, 0))); t.b("\n" + i); t.b("</div>"); return t.fl(); }, partials: {}, subs: {} });
+defaultTemplates["icon-file-added"] = new hoganExports.Template({ code: function (c, p, i) { var t = this; t.b(i = i || ""); t.b("<svg aria-hidden=\"true\" class=\"d2h-icon d2h-added\" height=\"16\" title=\"added\" version=\"1.1\" viewBox=\"0 0 14 16\""); t.b("\n" + i); t.b("     width=\"14\">"); t.b("\n" + i); t.b("    <path d=\"M13 1H1C0.45 1 0 1.45 0 2v12c0 0.55 0.45 1 1 1h12c0.55 0 1-0.45 1-1V2c0-0.55-0.45-1-1-1z m0 13H1V2h12v12zM6 9H3V7h3V4h2v3h3v2H8v3H6V9z\"></path>"); t.b("\n" + i); t.b("</svg>"); return t.fl(); }, partials: {}, subs: {} });
+defaultTemplates["icon-file-changed"] = new hoganExports.Template({ code: function (c, p, i) { var t = this; t.b(i = i || ""); t.b("<svg aria-hidden=\"true\" class=\"d2h-icon d2h-changed\" height=\"16\" title=\"modified\" version=\"1.1\""); t.b("\n" + i); t.b("     viewBox=\"0 0 14 16\" width=\"14\">"); t.b("\n" + i); t.b("    <path d=\"M13 1H1C0.45 1 0 1.45 0 2v12c0 0.55 0.45 1 1 1h12c0.55 0 1-0.45 1-1V2c0-0.55-0.45-1-1-1z m0 13H1V2h12v12zM4 8c0-1.66 1.34-3 3-3s3 1.34 3 3-1.34 3-3 3-3-1.34-3-3z\"></path>"); t.b("\n" + i); t.b("</svg>"); return t.fl(); }, partials: {}, subs: {} });
+defaultTemplates["icon-file-deleted"] = new hoganExports.Template({ code: function (c, p, i) { var t = this; t.b(i = i || ""); t.b("<svg aria-hidden=\"true\" class=\"d2h-icon d2h-deleted\" height=\"16\" title=\"removed\" version=\"1.1\""); t.b("\n" + i); t.b("     viewBox=\"0 0 14 16\" width=\"14\">"); t.b("\n" + i); t.b("    <path d=\"M13 1H1C0.45 1 0 1.45 0 2v12c0 0.55 0.45 1 1 1h12c0.55 0 1-0.45 1-1V2c0-0.55-0.45-1-1-1z m0 13H1V2h12v12zM11 9H3V7h8v2z\"></path>"); t.b("\n" + i); t.b("</svg>"); return t.fl(); }, partials: {}, subs: {} });
+defaultTemplates["icon-file-renamed"] = new hoganExports.Template({ code: function (c, p, i) { var t = this; t.b(i = i || ""); t.b("<svg aria-hidden=\"true\" class=\"d2h-icon d2h-moved\" height=\"16\" title=\"renamed\" version=\"1.1\""); t.b("\n" + i); t.b("     viewBox=\"0 0 14 16\" width=\"14\">"); t.b("\n" + i); t.b("    <path d=\"M6 9H3V7h3V4l5 4-5 4V9z m8-7v12c0 0.55-0.45 1-1 1H1c-0.55 0-1-0.45-1-1V2c0-0.55 0.45-1 1-1h12c0.55 0 1 0.45 1 1z m-1 0H1v12h12V2z\"></path>"); t.b("\n" + i); t.b("</svg>"); return t.fl(); }, partials: {}, subs: {} });
+defaultTemplates["icon-file"] = new hoganExports.Template({ code: function (c, p, i) { var t = this; t.b(i = i || ""); t.b("<svg aria-hidden=\"true\" class=\"d2h-icon\" height=\"16\" version=\"1.1\" viewBox=\"0 0 12 16\" width=\"12\">"); t.b("\n" + i); t.b("    <path d=\"M6 5H2v-1h4v1zM2 8h7v-1H2v1z m0 2h7v-1H2v1z m0 2h7v-1H2v1z m10-7.5v9.5c0 0.55-0.45 1-1 1H1c-0.55 0-1-0.45-1-1V2c0-0.55 0.45-1 1-1h7.5l3.5 3.5z m-1 0.5L8 2H1v12h10V5z\"></path>"); t.b("\n" + i); t.b("</svg>"); return t.fl(); }, partials: {}, subs: {} });
+defaultTemplates["line-by-line-file-diff"] = new hoganExports.Template({ code: function (c, p, i) { var t = this; t.b(i = i || ""); t.b("<div id=\""); t.b(t.v(t.f("fileHtmlId", c, p, 0))); t.b("\" class=\"d2h-file-wrapper\" data-lang=\""); t.b(t.v(t.d("file.language", c, p, 0))); t.b("\">"); t.b("\n" + i); t.b("    <div class=\"d2h-file-header\">"); t.b("\n" + i); t.b("    "); t.b(t.t(t.f("filePath", c, p, 0))); t.b("\n" + i); t.b("    </div>"); t.b("\n" + i); t.b("    <div class=\"d2h-file-diff\">"); t.b("\n" + i); t.b("        <div class=\"d2h-code-wrapper\">"); t.b("\n" + i); t.b("            <table class=\"d2h-diff-table\">"); t.b("\n" + i); t.b("                <tbody class=\"d2h-diff-tbody\">"); t.b("\n" + i); t.b("                "); t.b(t.t(t.f("diffs", c, p, 0))); t.b("\n" + i); t.b("                </tbody>"); t.b("\n" + i); t.b("            </table>"); t.b("\n" + i); t.b("        </div>"); t.b("\n" + i); t.b("    </div>"); t.b("\n" + i); t.b("</div>"); return t.fl(); }, partials: {}, subs: {} });
+defaultTemplates["line-by-line-numbers"] = new hoganExports.Template({ code: function (c, p, i) { var t = this; t.b(i = i || ""); t.b("<div class=\"line-num1\">"); t.b(t.v(t.f("oldNumber", c, p, 0))); t.b("</div>"); t.b("\n" + i); t.b("<div class=\"line-num2\">"); t.b(t.v(t.f("newNumber", c, p, 0))); t.b("</div>"); return t.fl(); }, partials: {}, subs: {} });
+defaultTemplates["side-by-side-file-diff"] = new hoganExports.Template({ code: function (c, p, i) { var t = this; t.b(i = i || ""); t.b("<div id=\""); t.b(t.v(t.f("fileHtmlId", c, p, 0))); t.b("\" class=\"d2h-file-wrapper\" data-lang=\""); t.b(t.v(t.d("file.language", c, p, 0))); t.b("\">"); t.b("\n" + i); t.b("    <div class=\"d2h-file-header\">"); t.b("\n" + i); t.b("      "); t.b(t.t(t.f("filePath", c, p, 0))); t.b("\n" + i); t.b("    </div>"); t.b("\n" + i); t.b("    <div class=\"d2h-files-diff\">"); t.b("\n" + i); t.b("        <div class=\"d2h-file-side-diff\">"); t.b("\n" + i); t.b("            <div class=\"d2h-code-wrapper\">"); t.b("\n" + i); t.b("                <table class=\"d2h-diff-table\">"); t.b("\n" + i); t.b("                    <tbody class=\"d2h-diff-tbody\">"); t.b("\n" + i); t.b("                    "); t.b(t.t(t.d("diffs.left", c, p, 0))); t.b("\n" + i); t.b("                    </tbody>"); t.b("\n" + i); t.b("                </table>"); t.b("\n" + i); t.b("            </div>"); t.b("\n" + i); t.b("        </div>"); t.b("\n" + i); t.b("        <div class=\"d2h-file-side-diff\">"); t.b("\n" + i); t.b("            <div class=\"d2h-code-wrapper\">"); t.b("\n" + i); t.b("                <table class=\"d2h-diff-table\">"); t.b("\n" + i); t.b("                    <tbody class=\"d2h-diff-tbody\">"); t.b("\n" + i); t.b("                    "); t.b(t.t(t.d("diffs.right", c, p, 0))); t.b("\n" + i); t.b("                    </tbody>"); t.b("\n" + i); t.b("                </table>"); t.b("\n" + i); t.b("            </div>"); t.b("\n" + i); t.b("        </div>"); t.b("\n" + i); t.b("    </div>"); t.b("\n" + i); t.b("</div>"); return t.fl(); }, partials: {}, subs: {} });
+defaultTemplates["tag-file-added"] = new hoganExports.Template({ code: function (c, p, i) { var t = this; t.b(i = i || ""); t.b("<span class=\"d2h-tag d2h-added d2h-added-tag\">ADDED</span>"); return t.fl(); }, partials: {}, subs: {} });
+defaultTemplates["tag-file-changed"] = new hoganExports.Template({ code: function (c, p, i) { var t = this; t.b(i = i || ""); t.b("<span class=\"d2h-tag d2h-changed d2h-changed-tag\">CHANGED</span>"); return t.fl(); }, partials: {}, subs: {} });
+defaultTemplates["tag-file-deleted"] = new hoganExports.Template({ code: function (c, p, i) { var t = this; t.b(i = i || ""); t.b("<span class=\"d2h-tag d2h-deleted d2h-deleted-tag\">DELETED</span>"); return t.fl(); }, partials: {}, subs: {} });
+defaultTemplates["tag-file-renamed"] = new hoganExports.Template({ code: function (c, p, i) { var t = this; t.b(i = i || ""); t.b("<span class=\"d2h-tag d2h-moved d2h-moved-tag\">RENAMED</span>"); return t.fl(); }, partials: {}, subs: {} });
+
+class HoganJsUtils {
+    constructor({ compiledTemplates = {}, rawTemplates = {} }) {
+        const compiledRawTemplates = Object.entries(rawTemplates).reduce((previousTemplates, [name, templateString]) => {
+            const compiledTemplate = hoganExports.compile(templateString, { asString: false });
+            return Object.assign(Object.assign({}, previousTemplates), { [name]: compiledTemplate });
+        }, {});
+        this.preCompiledTemplates = Object.assign(Object.assign(Object.assign({}, defaultTemplates), compiledTemplates), compiledRawTemplates);
+    }
+    static compile(templateString) {
+        return hoganExports.compile(templateString, { asString: false });
+    }
+    render(namespace, view, params, partials, indent) {
+        const templateKey = this.templateKey(namespace, view);
+        try {
+            const template = this.preCompiledTemplates[templateKey];
+            return template.render(params, partials, indent);
+        }
+        catch (_e) {
+            throw new Error(`Could not find template to render '${templateKey}'`);
+        }
+    }
+    template(namespace, view) {
+        return this.preCompiledTemplates[this.templateKey(namespace, view)];
+    }
+    templateKey(namespace, view) {
+        return `${namespace}-${view}`;
+    }
+}
+
+const defaultDiff2HtmlConfig = Object.assign(Object.assign(Object.assign({}, defaultLineByLineRendererConfig), defaultSideBySideRendererConfig), { outputFormat: OutputFormatType.LINE_BY_LINE, drawFileList: true });
+function html(diffInput, configuration = {}) {
+    const config = Object.assign(Object.assign({}, defaultDiff2HtmlConfig), configuration);
+    const diffJson = typeof diffInput === 'string' ? parse(diffInput, config) : diffInput;
+    const hoganUtils = new HoganJsUtils(config);
+    const { colorScheme } = config;
+    const fileListRendererConfig = { colorScheme };
+    const fileList = config.drawFileList ? new FileListRenderer(hoganUtils, fileListRendererConfig).render(diffJson) : '';
+    const diffOutput = config.outputFormat === 'side-by-side'
+        ? new SideBySideRenderer(hoganUtils, config).render(diffJson)
+        : new LineByLineRenderer(hoganUtils, config).render(diffJson);
+    return fileList + diffOutput;
+}
+
+var types = {};
+
+var hasRequiredTypes;
+
+function requireTypes () {
+	if (hasRequiredTypes) return types;
+	hasRequiredTypes = 1;
+	Object.defineProperty(types, "__esModule", { value: true });
+	types.ColorSchemeType = types.DiffStyleType = types.LineMatchingType = types.OutputFormatType = types.LineType = undefined;
+	var LineType;
+	(function (LineType) {
+	    LineType["INSERT"] = "insert";
+	    LineType["DELETE"] = "delete";
+	    LineType["CONTEXT"] = "context";
+	})(LineType || (types.LineType = LineType = {}));
+	types.OutputFormatType = {
+	    LINE_BY_LINE: 'line-by-line',
+	    SIDE_BY_SIDE: 'side-by-side',
+	};
+	types.LineMatchingType = {
+	    LINES: 'lines',
+	    WORDS: 'words',
+	    NONE: 'none',
+	};
+	types.DiffStyleType = {
+	    WORD: 'word',
+	    CHAR: 'char',
+	};
+	var ColorSchemeType;
+	(function (ColorSchemeType) {
+	    ColorSchemeType["AUTO"] = "auto";
+	    ColorSchemeType["DARK"] = "dark";
+	    ColorSchemeType["LIGHT"] = "light";
+	})(ColorSchemeType || (types.ColorSchemeType = ColorSchemeType = {}));
+	
+	return types;
+}
+
+var typesExports = requireTypes();
+
 const CHECKS_NAME = 'Report of gradle-dependency-diff-action';
 const TAG = '<!-- gradle-dependency-diff-action -->';
 const PR_BODY_TAG_PATTERN = new RegExp(`${TAG}[\\s\\S]*${TAG}`);
@@ -37062,19 +39887,64 @@ function getChecksOutput(diffResults) {
     tryFlush();
     return result;
 }
-async function reportToCustomEndpoint(endpointUrl, headers, diffResults) {
+function generateHtmlReport(diffResults) {
     if (diffResults.length === 0) {
-        return [];
+        return undefined;
     }
-    const markdownText = diffResults
+    const diffInput = diffResults
         .map((diffResult) => {
-        let text = `## ${diffResult.project} - ${diffResult.configuration}\n`;
-        text += '```diff\n';
+        let text = `--- a/${diffResult.project} - ${diffResult.configuration}\n`;
+        text += `+++ b/${diffResult.project} - ${diffResult.configuration}\n`;
+        text += `@@ -1 +1 @@\n`;
         text += `${diffResult.result}\n`;
-        text += '```';
         return text;
     })
-        .join('\n');
+        .join('');
+    const generated = html(diffInput, {
+        outputFormat: 'side-by-side',
+        drawFileList: true,
+        colorScheme: typesExports.ColorSchemeType.AUTO
+    });
+    return `
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Report of gradle-dependency-diff-action</title>
+  <style>
+  @media screen and (prefers-color-scheme: light) {
+    body {
+      background-color: var(--d2h-bg-color);
+    }
+    h1 {
+      color: var(--d2h-light-color);
+    }
+  }
+  @media screen and (prefers-color-scheme: dark) {
+    body {
+      background-color: rgb(13, 17, 23);
+    }
+    h1 {
+      color: var(--d2h-dark-color);
+    }
+  }
+  </style>
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/diff2html@3.4.51/bundles/css/diff2html.min.css" />
+</head>
+<body style="text-align: center; font-family: 'Source Sans Pro', sans-serif">
+<h1>Report of gradle-dependency-diff-action</h1>
+<div id="diff">
+${generated}
+</div>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/diff2html@3.4.51/bundles/js/diff2html.min.js"></script>
+</body>
+</html>
+`;
+}
+async function reportToCustomEndpoint(endpointUrl, headers, html) {
+    if (!html) {
+        return [];
+    }
     const headersRecords = headers.reduce((acc, item) => {
         const index = item.indexOf(':');
         if (index !== -1) {
@@ -37086,10 +39956,10 @@ async function reportToCustomEndpoint(endpointUrl, headers, diffResults) {
     const res = await fetch(endpointUrl, {
         method: 'post',
         headers: {
-            'content-type': 'application/json',
+            'content-type': 'text/html',
             ...headersRecords
         },
-        body: JSON.stringify({ body: markdownText })
+        body: html
     });
     const json = (await res.json());
     return [json.url];
@@ -37167,9 +40037,11 @@ async function reportToLabel(octokitHelper, diffResults, labelName) {
         }
     }
 }
-async function reportToArtifact(resultDir) {
+async function reportToArtifact(resultDir, html) {
     const globber = await globExports.create(path__default.join(resultDir, '**', '*.txt'));
     const files = await globber.glob();
+    require$$0$2.writeFileSync(path__default.join(resultDir, 'result.html'), html);
+    files.push(path__default.join(resultDir, 'result.html'));
     const artifactClient = artifactClientExports.create();
     await artifactClient.uploadArtifact('gradle-dependency-diff-action-result', files, resultDir);
 }
@@ -37275,6 +40147,7 @@ async function run() {
         const jarPath = await downloadJar(inputs.toolVersion, tempDirs.root);
         // calculate diff
         const diffResults = await calculateDiffResults(jarPath, configurations, tempDirs);
+        const html = generateHtmlReport(diffResults);
         const octokit = githubExports.getOctokit(inputs.token, {
             baseUrl: githubExports.context.apiUrl
         });
@@ -37282,7 +40155,7 @@ async function run() {
         // report
         let urls;
         if (inputs.customEndpointUrl.length > 0) {
-            urls = await reportToCustomEndpoint(inputs.customEndpointUrl, inputs.customEndpointHeaders, diffResults);
+            urls = await reportToCustomEndpoint(inputs.customEndpointUrl, inputs.customEndpointHeaders, html);
         }
         else {
             urls = await reportToChecks(octokitHelper, diffResults);
@@ -37299,7 +40172,7 @@ async function run() {
             await reportToLabel(octokitHelper, diffResults, inputs.labelName);
         }
         if (diffResults.length !== 0 && inputs.uploadArtifact) {
-            await reportToArtifact(tempDirs.result);
+            await reportToArtifact(tempDirs.result, html);
         }
     }
     catch (error) {

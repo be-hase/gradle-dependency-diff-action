@@ -45,6 +45,7 @@ export async function run(): Promise<void> {
       configurations,
       tempDirs
     )
+    const html = reporter.generateHtmlReport(diffResults)
 
     const octokit = github.getOctokit(inputs.token, {
       baseUrl: github.context.apiUrl
@@ -57,7 +58,7 @@ export async function run(): Promise<void> {
       urls = await reporter.reportToCustomEndpoint(
         inputs.customEndpointUrl,
         inputs.customEndpointHeaders,
-        diffResults
+        html
       )
     } else {
       urls = await reporter.reportToChecks(octokitHelper, diffResults)
@@ -74,7 +75,7 @@ export async function run(): Promise<void> {
       await reporter.reportToLabel(octokitHelper, diffResults, inputs.labelName)
     }
     if (diffResults.length !== 0 && inputs.uploadArtifact) {
-      await reporter.reportToArtifact(tempDirs.result)
+      await reporter.reportToArtifact(tempDirs.result, html as string)
     }
   } catch (error) {
     // Fail the workflow run if an error occurs
