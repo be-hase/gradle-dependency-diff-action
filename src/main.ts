@@ -63,13 +63,11 @@ export async function run(): Promise<void> {
     } else {
       urls = await reporter.reportToChecks(octokitHelper, diffResults)
     }
-    if (urls.length !== 0) {
-      if (inputs.postPrComment) {
-        await reporter.reportToPrComment(octokitHelper, urls, diffResults)
-      }
-      if (inputs.updatePrBody) {
-        await reporter.reportToPrBody(octokitHelper, urls, diffResults)
-      }
+    if (inputs.postPrComment) {
+      await reporter.reportToPrComment(octokitHelper, urls, diffResults)
+    }
+    if (inputs.updatePrBody) {
+      await reporter.reportToPrBody(octokitHelper, urls, diffResults)
     }
     if (inputs.assignLabel) {
       await reporter.reportToLabel(octokitHelper, diffResults, inputs.labelName)
