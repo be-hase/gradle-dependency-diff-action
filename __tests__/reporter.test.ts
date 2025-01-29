@@ -369,6 +369,7 @@ ${'B'.repeat(65400)}
 `,
         {
           colorScheme: 'auto',
+          drawFileList: false,
           outputFormat: 'side-by-side'
         }
       )
