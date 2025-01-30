@@ -67,7 +67,11 @@ The appearance of the PR:
 
 The appearance of the Checks:
 
-![screenshot1](docs/screenshot2.png)
+![screenshot2](docs/screenshot2.png)
+
+The HTML report generated in the actions artifact:
+
+![screenshot3](docs/screenshot3.png)
 
 ## Configuration
 
