@@ -15,7 +15,13 @@ describe('gradle.ts', () => {
       await generateDependenciesFiles('configuration', 'cwd')
       expect(getExecOutput).toHaveBeenCalledWith(
         './gradlew',
-        ['clean', 'dependencyReport', '--configuration', 'configuration'],
+        [
+          'clean',
+          'dependencyReport',
+          '--continue',
+          '--configuration',
+          'configuration'
+        ],
         { cwd: 'cwd' }
       )
     })

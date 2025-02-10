@@ -31229,9 +31229,22 @@ var ioExports = requireIo();
 var execExports = requireExec();
 
 async function generateDependenciesFiles(configuration, cwd) {
-    await execExports.getExecOutput('./gradlew', ['clean', 'dependencyReport', '--configuration', configuration], {
-        cwd: cwd
-    });
+    try {
+        await execExports.getExecOutput('./gradlew', [
+            'clean',
+            'dependencyReport',
+            '--continue',
+            '--configuration',
+            configuration
+        ], {
+            cwd: cwd
+        });
+    }
+    catch (error) {
+        if (error instanceof Error) {
+            coreExports.info(error.message);
+        }
+    }
 }
 
 // From https://github.com/actions/toolkit/blob/c18a7d2f7347ca2fef6a2e455c6842611eb5f5d6/packages/cache/src/internal/cacheUtils.ts
