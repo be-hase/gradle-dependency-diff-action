@@ -1,7 +1,7 @@
 import * as github from '@actions/github'
 import { DiffResult } from './types.js'
 import { OctokitHelper } from './octokitHelper.js'
-import * as artifact from '@actions/artifact'
+import { DefaultArtifactClient } from '@actions/artifact'
 import * as glob from '@actions/glob'
 import path from 'path'
 import * as Diff2html from 'diff2html'
@@ -320,7 +320,7 @@ export async function reportToArtifact(resultDir: string) {
   const files = await globber.glob()
   files.push(path.join(resultDir, REPORT_HTML_FILENAME))
 
-  const artifactClient = artifact.create()
+  const artifactClient = new DefaultArtifactClient()
   await artifactClient.uploadArtifact(
     'gradle-dependency-diff-action-result',
     files,
