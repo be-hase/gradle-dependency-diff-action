@@ -27,6 +27,8 @@ export async function downloadJar(
 export async function calculateDiffResults(
   jarPath: string,
   configuration: string,
+  oldRepoDir: string,
+  newRepoDir: string,
   tempDirs: TempDirs
 ): Promise<DiffResult[]> {
   const results: DiffResult[] = []
@@ -35,14 +37,18 @@ export async function calculateDiffResults(
   )
   for (const filePath of await globber.glob()) {
     const oldFilePath = path.join(
-      tempDirs.baseRepo,
+      oldRepoDir,
+      removePrefix(filePath, process.env.GITHUB_WORKSPACE + path.sep)
+    )
+    const newFilePath = path.join(
+      newRepoDir,
       removePrefix(filePath, process.env.GITHUB_WORKSPACE + path.sep)
     )
     const result = await execDiff(
       jarPath,
       configuration,
-      filePath,
       oldFilePath,
+      newFilePath,
       tempDirs.result
     )
     if (result) {
@@ -67,19 +73,19 @@ export function sortDiffResults(results: DiffResult[]) {
 async function execDiff(
   jarPath: string,
   configuration: string,
-  filePath: string,
   oldFilePath: string,
+  newFilePath: string,
   resultDir: string
 ): Promise<DiffResult | undefined> {
   if (!fs.existsSync(oldFilePath)) {
     return
   }
 
-  const project = getProjectFromFile(filePath)
+  const project = getProjectFromFile(newFilePath)
 
   const output = await exec.getExecOutput(
     'java',
-    ['-jar', jarPath, oldFilePath, filePath],
+    ['-jar', jarPath, oldFilePath, newFilePath],
     { silent: true }
   )
   if (output.stdout) {

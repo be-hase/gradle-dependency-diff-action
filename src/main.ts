@@ -7,13 +7,7 @@ import * as exec from '@actions/exec'
 import * as gradle from './gradle.js'
 import * as utils from './utils.js'
 import * as diff from './diff.js'
-import {
-  BASE_REPO_DIR_NAME,
-  DiffResult,
-  Inputs,
-  RESULT_DIR_NAME,
-  TempDirs
-} from './types.js'
+import { DiffResult, Inputs, RESULT_DIR_NAME, TempDirs } from './types.js'
 import * as reporter from './reporter.js'
 import { getOctokitHelper } from './octokitHelper.js'
 
@@ -32,10 +26,6 @@ export async function run(): Promise<void> {
     // create temp directories
     const tempDirs = await createTempDirs()
 
-    // clone base repository
-    const gitUrl = getGitUrl(inputs.token)
-    await cloneBaseRepository(gitUrl, tempDirs.baseRepo)
-
     // download jar
     const jarPath = await diff.downloadJar(inputs.toolVersion, tempDirs.root)
 
@@ -43,6 +33,8 @@ export async function run(): Promise<void> {
     const diffResults = await calculateDiffResults(
       jarPath,
       configurations,
+      inputs.oldRepoDir,
+      inputs.newRepoDir,
       tempDirs
     )
     const html = reporter.generateHtmlReport(diffResults, tempDirs.result)
@@ -87,6 +79,8 @@ function getInputs(): Inputs {
   return {
     configurations: core.getInput('configurations'),
     token: core.getInput('token'),
+    oldRepoDir: core.getInput('old-repo-dir'),
+    newRepoDir: core.getInput('new-repo-dir'),
     toolVersion: core.getInput('tool-version'),
     postPrComment: core.getBooleanInput('post-pr-comment'),
     updatePrBody: core.getBooleanInput('update-pr-body'),
@@ -102,29 +96,14 @@ function getInputs(): Inputs {
 export async function createTempDirs(): Promise<TempDirs> {
   const tempDir = await utils.createTempDirectory()
 
-  const baseRepo = path.join(tempDir, BASE_REPO_DIR_NAME)
   const result = path.join(tempDir, RESULT_DIR_NAME)
 
-  await io.mkdirP(baseRepo)
   await io.mkdirP(result)
 
   return {
     root: tempDir,
-    baseRepo: baseRepo,
     result: result
   }
-}
-
-// export for testing
-export function getGitUrl(token: string): string {
-  const url = new URL(github.context.serverUrl)
-  if (token.startsWith('ghp_')) {
-    url.username = token
-  } else {
-    url.username = 'x-access-token'
-    url.password = token
-  }
-  return `${url.toString()}${github.context.repo.owner}/${github.context.repo.repo}`
 }
 
 // export for testing
@@ -147,15 +126,19 @@ export async function cloneBaseRepository(
 export async function calculateDiffResults(
   jarPath: string,
   configurations: string[],
+  oldRepoDir: string,
+  newRepoDir: string,
   tempDirs: TempDirs
 ) {
   const diffResults: DiffResult[] = []
   for (const configuration of configurations) {
-    await gradle.generateDependenciesFiles(configuration)
-    await gradle.generateDependenciesFiles(configuration, tempDirs.baseRepo)
+    await gradle.generateDependenciesFiles(configuration, oldRepoDir)
+    await gradle.generateDependenciesFiles(configuration, newRepoDir)
     const configurationDiffResults = await diff.calculateDiffResults(
       jarPath,
       configuration,
+      oldRepoDir,
+      newRepoDir,
       tempDirs
     )
     diffResults.push(...configurationDiffResults)

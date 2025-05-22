@@ -1,9 +1,10 @@
-export const BASE_REPO_DIR_NAME = 'base-repo'
 export const RESULT_DIR_NAME = 'result'
 
 export interface Inputs {
   configurations: string
   token: string
+  oldRepoDir: string
+  newRepoDir: string
   toolVersion: string
   postPrComment: boolean
   updatePrBody: boolean
@@ -16,7 +17,6 @@ export interface Inputs {
 
 export interface TempDirs {
   root: string
-  baseRepo: string
   result: string
 }
 
