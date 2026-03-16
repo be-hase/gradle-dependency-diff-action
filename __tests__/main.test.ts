@@ -74,6 +74,8 @@ describe('main.ts', () => {
         'clone',
         '--depth',
         '1',
+        '--recurse-submodules',
+        '--shallow-submodules',
         '-b',
         'main',
         gitUrl,

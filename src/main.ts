@@ -136,6 +136,8 @@ export async function cloneBaseRepository(
     'clone',
     '--depth',
     '1',
+    '--recurse-submodules',
+    '--shallow-submodules',
     '-b',
     github.context.payload.pull_request?.base.ref,
     gitUrl,

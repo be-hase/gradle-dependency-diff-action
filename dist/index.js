@@ -209153,6 +209153,8 @@ async function cloneBaseRepository(gitUrl, baseRepoDir) {
         'clone',
         '--depth',
         '1',
+        '--recurse-submodules',
+        '--shallow-submodules',
         '-b',
         githubExports.context.payload.pull_request?.base.ref,
         gitUrl,
