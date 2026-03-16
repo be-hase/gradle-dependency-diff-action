@@ -60,7 +60,8 @@ describe('main.ts', () => {
     const mockExec = jest.spyOn(exec, 'exec')
 
     it('test', async () => {
-      const gitUrl = 'gitUrl'
+      const gitUrl =
+        'https://x-access-token:token@github.com/example-org/example-repo'
       const baseRepoDir = 'baseRepoDir'
 
       mockExec.mockResolvedValue(0)
@@ -68,9 +69,13 @@ describe('main.ts', () => {
         payload: { pull_request: { base: { ref: 'main' } } }
       } as never)
 
-      await cloneBaseRepository('gitUrl', 'baseRepoDir')
+      await cloneBaseRepository(gitUrl, baseRepoDir)
 
       expect(mockExec).toHaveBeenCalledWith('git', [
+        '-c',
+        'url.https://x-access-token:token@github.com/.insteadOf=git@github.com:',
+        '-c',
+        'url.https://x-access-token:token@github.com/.insteadOf=ssh://git@github.com/',
         'clone',
         '--depth',
         '1',
