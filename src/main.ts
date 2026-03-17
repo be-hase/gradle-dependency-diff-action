@@ -133,10 +133,24 @@ export async function cloneBaseRepository(
   gitUrl: string,
   baseRepoDir: string
 ): Promise<void> {
+  const repoUrl = new URL(gitUrl)
+  const auth = repoUrl.password.length
+    ? `${repoUrl.username}:${repoUrl.password}@`
+    : `${repoUrl.username}@`
+  const authenticatedOriginWithSlash = `${repoUrl.protocol}//${auth}${repoUrl.host}/`
+  const rewriteScpLikeSshUrl = `url.${authenticatedOriginWithSlash}.insteadOf=git@${repoUrl.host}:`
+  const rewriteSshUrl = `url.${authenticatedOriginWithSlash}.insteadOf=ssh://git@${repoUrl.host}/`
+
   await exec.exec('git', [
+    '-c',
+    rewriteScpLikeSshUrl,
+    '-c',
+    rewriteSshUrl,
     'clone',
     '--depth',
     '1',
+    '--recurse-submodules',
+    '--shallow-submodules',
     '-b',
     github.context.payload.pull_request?.base.ref,
     gitUrl,
