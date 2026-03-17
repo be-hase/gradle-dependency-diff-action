@@ -40221,10 +40221,23 @@ function getGitUrl(token) {
 }
 // export for testing
 async function cloneBaseRepository(gitUrl, baseRepoDir) {
+    const repoUrl = new URL(gitUrl);
+    const auth = repoUrl.password.length
+        ? `${repoUrl.username}:${repoUrl.password}@`
+        : `${repoUrl.username}@`;
+    const authenticatedOriginWithSlash = `${repoUrl.protocol}//${auth}${repoUrl.host}/`;
+    const rewriteScpLikeSshUrl = `url.${authenticatedOriginWithSlash}.insteadOf=git@${repoUrl.host}:`;
+    const rewriteSshUrl = `url.${authenticatedOriginWithSlash}.insteadOf=ssh://git@${repoUrl.host}/`;
     await execExports.exec('git', [
+        '-c',
+        rewriteScpLikeSshUrl,
+        '-c',
+        rewriteSshUrl,
         'clone',
         '--depth',
         '1',
+        '--recurse-submodules',
+        '--shallow-submodules',
         '-b',
         githubExports.context.payload.pull_request?.base.ref,
         gitUrl,
