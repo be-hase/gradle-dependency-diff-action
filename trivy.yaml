@@ -1,4 +1,3 @@
----
 # Configuration for Trivy, run as part of super-linter.
 # https://trivy.dev/latest/docs/references/configuration/config-file/
 disable-telemetry: true

@@ -33,8 +33,10 @@
   GitHub-hosted runners already satisfy this. If you use self-hosted runners or
   GitHub Enterprise Server, make sure your runner is up to date before
   upgrading, since the floating `v2` tag picks up new releases automatically.
-- For environments that cannot use a recent runner (e.g. older GitHub Enterprise
-  Server), keep using `v1`.
+- The floating `v1` tag will also move to the Node 24 runtime in a future
+  release. If your runner cannot be updated (e.g. older GitHub Enterprise
+  Server), pin to a release that still runs on Node 20 — currently `v1.1.3` — or
+  to a commit SHA, instead of a floating major tag.
 
 ### Apply `project-report` plugin
 
