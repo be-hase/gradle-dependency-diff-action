@@ -26,6 +26,16 @@
 
 ## Getting Start
 
+### Requirements
+
+- v2 (and later) runs on the Node 24 runtime, which requires
+  [GitHub Actions Runner v2.327.1 or later](https://github.com/actions/runner/releases/tag/v2.327.1).
+  GitHub-hosted runners already satisfy this. If you use self-hosted runners or
+  GitHub Enterprise Server, make sure your runner is up to date before
+  upgrading, since the floating `v2` tag picks up new releases automatically.
+- For environments that cannot use a recent runner (e.g. older GitHub Enterprise
+  Server), keep using `v1`.
+
 ### Apply `project-report` plugin
 
 Please apply the project-report plugin to the project where you want to obtain
@@ -56,7 +66,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - uses: be-hase/gradle-dependency-diff-action@v1
+      - uses: be-hase/gradle-dependency-diff-action@v2
 ```
 
 ## Report Samples

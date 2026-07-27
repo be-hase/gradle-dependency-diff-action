@@ -52,9 +52,7 @@ jobs:
           VALIDATE_JSCPD: false
           VALIDATE_JSON: false
           # False positives in this repo: CSS hex colors in reporter.ts
-          # (codespell), terminology rules on docs (textlint), and token
-          # prefix strings in dist/ sourcemaps (trivy secret scan)
+          # (codespell) and terminology rules on docs (textlint)
           VALIDATE_NATURAL_LANGUAGE: false
           VALIDATE_SPELL_CODESPELL: false
-          VALIDATE_TRIVY: false
           VALIDATE_TYPESCRIPT_ES: false
