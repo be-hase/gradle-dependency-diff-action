@@ -15,13 +15,13 @@ extensions even in `.ts` files).
 ## Commands
 
 ```shell
-npm test                     # Run all tests (jest + ts-jest, tests in __tests__/)
+npm test                     # Run all tests (jest + ts-jest, __tests__/)
 npx jest __tests__/diff.test.ts   # Run a single test file
 npm run lint                 # ESLint
 npm run format:write         # Prettier
 npm run bundle               # format + rollup bundle to dist/
 npm run all                  # format + lint + test + coverage badge + package
-npm run local-action         # Run the action locally via @github/local-action (needs .env)
+npm run local-action         # Run locally via @github/local-action (.env)
 ```
 
 **Important: `dist/` is committed.** The action executes `dist/index.js`
@@ -39,16 +39,16 @@ whole flow:
 
 1. Read inputs (defined in `action.yml`; keep `getInputs()` in `main.ts` and the
    README config table in sync when adding inputs).
-2. Shallow-clone the PR base branch into a temp dir
+1. Shallow-clone the PR base branch into a temp dir
    (`getGitUrl`/`cloneBaseRepository` — handles token auth and rewrites SSH
    submodule URLs to HTTPS).
-3. Download the dependency-tree-diff jar (`diff.ts`).
-4. For each configuration: run `./gradlew clean dependencyReport` in both the
+1. Download the dependency-tree-diff jar (`diff.ts`).
+1. For each configuration: run `./gradlew clean dependencyReport` in both the
    workspace (head) and the base clone (`gradle.ts`), glob the generated
    `**/build/reports/project/dependencies.txt` files, and diff head vs base per
    project with the jar (`diff.ts`). Multi-project builds are supported by
    matching each head report file to the same relative path in the base clone.
-5. Report results (`reporter.ts`): GitHub Checks (split into multiple checks
+1. Report results (`reporter.ts`): GitHub Checks (split into multiple checks
    when over the 65,535-char limit, truncated per project if a single diff
    exceeds it), optional PR comment / PR body update / label / HTML report
    artifact (diff2html). A `custom-endpoint-url` input can replace Checks with a

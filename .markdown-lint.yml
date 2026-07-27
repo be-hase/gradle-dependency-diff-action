@@ -12,6 +12,12 @@ MD013:
 MD029:
   style: one
 
+# Allow the collapsible FAQ entries in README.md
+MD033:
+  allowed_elements:
+    - details
+    - summary
+
 # Spaces after list markers
 MD030:
   ul_single: 1

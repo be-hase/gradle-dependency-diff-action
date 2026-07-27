@@ -99,7 +99,7 @@ The HTML report generated in the actions artifact:
 ## FAQ
 
 <details>
-<summary>The error `Task 'dependencyReport' not found in root project 'xxx' and its subprojects` has occurred.</summary>
+<summary>Error: Task 'dependencyReport' not found in root project</summary>
 
 The project-report plugin may not be applied to the base branch of the Pull
 Request.
