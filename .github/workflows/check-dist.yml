@@ -13,9 +13,11 @@ on:
   pull_request:
     branches:
       - main
+      - releases/v1
   push:
     branches:
       - main
+      - releases/v1
 
 permissions:
   contents: read
