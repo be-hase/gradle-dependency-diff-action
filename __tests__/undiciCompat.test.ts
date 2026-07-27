@@ -5,15 +5,33 @@
  * (octokit REST calls via @actions/github, directly and through an HTTP
  * proxy) against real local servers to prove the override works there.
  *
+ * @actions/github captures GITHUB_API_URL and the proxy environment at
+ * module load, so there is deliberately NO runtime static import of it:
+ * each test prepares the environment first, then does a fresh dynamic
+ * import after jest.resetModules(). The proxy-related environment is
+ * snapshotted per test and fully restored afterwards, so the tests pass
+ * regardless of any proxy configuration in the surrounding shell.
+ *
  * Note: @actions/artifact@1 does not use undici at all (it goes through
  * @actions/http-client's classic node http/https agents), so the
  * override cannot affect the artifact upload path.
  */
 import * as http from 'node:http'
 import * as net from 'node:net'
-import * as github from '@actions/github'
 import { AddressInfo } from 'node:net'
 import { jest } from '@jest/globals'
+
+type GithubModule = typeof import('@actions/github')
+
+const ENV_KEYS = [
+  'http_proxy',
+  'HTTP_PROXY',
+  'https_proxy',
+  'HTTPS_PROXY',
+  'no_proxy',
+  'NO_PROXY',
+  'GITHUB_API_URL'
+] as const
 
 describe('undici 6 override compatibility', () => {
   let target: http.Server
@@ -21,6 +39,12 @@ describe('undici 6 override compatibility', () => {
   let targetPort: number
   let proxyPort: number
   let proxyConnects: string[]
+  const savedEnv: Record<string, string | undefined> = {}
+
+  async function importGithub(): Promise<GithubModule> {
+    jest.resetModules()
+    return await import('@actions/github')
+  }
 
   beforeAll(async () => {
     // Minimal fake GitHub API: every GET returns an empty JSON array.
@@ -53,13 +77,27 @@ describe('undici 6 override compatibility', () => {
     await new Promise((resolve) => proxy.close(resolve))
   })
 
+  beforeEach(() => {
+    // Snapshot and clear every proxy-related variable so the surrounding
+    // shell's proxy configuration cannot leak into the module under test.
+    for (const key of ENV_KEYS) {
+      savedEnv[key] = process.env[key]
+      delete process.env[key]
+    }
+  })
+
   afterEach(() => {
-    delete process.env['http_proxy']
-    delete process.env['https_proxy']
-    delete process.env['GITHUB_API_URL']
+    for (const key of ENV_KEYS) {
+      if (savedEnv[key] === undefined) {
+        delete process.env[key]
+      } else {
+        process.env[key] = savedEnv[key]
+      }
+    }
   })
 
   it('octokit REST call succeeds without a proxy', async () => {
+    const github = await importGithub()
     const octokit = github.getOctokit('token', {
       baseUrl: `http://127.0.0.1:${targetPort}`
     })
@@ -75,8 +113,6 @@ describe('undici 6 override compatibility', () => {
   })
 
   it('octokit REST call goes through the proxy via undici ProxyAgent', async () => {
-    // @actions/github captures GITHUB_API_URL and the proxy settings at
-    // module load, so set the environment first and re-import it.
     // @actions/http-client never proxies loopback addresses, so use a
     // non-loopback hostname. It does not need to resolve: with a CONNECT
     // proxy, name resolution happens at the proxy, and our test proxy
@@ -84,10 +120,9 @@ describe('undici 6 override compatibility', () => {
     process.env['http_proxy'] = `http://127.0.0.1:${proxyPort}`
     process.env['GITHUB_API_URL'] =
       'http://gradle-dependency-diff-action.invalid'
-    jest.resetModules()
-    const githubWithProxy: typeof github = await import('@actions/github')
+    const github = await importGithub()
 
-    const octokit = githubWithProxy.getOctokit('token')
+    const octokit = github.getOctokit('token')
 
     const res = await octokit.rest.issues.listComments({
       owner: 'owner',
