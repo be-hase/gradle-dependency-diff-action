@@ -1,4 +1,4 @@
-import { removePrefix } from '../src/utils'
+import { removePrefix } from '../src/utils.js'
 
 describe('utils.ts', () => {
   describe('removePrefix', () => {

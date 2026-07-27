@@ -1,4 +1,18 @@
-import {
+import { jest } from '@jest/globals'
+import * as github from '@actions/github'
+import fs from 'fs'
+import { DiffResult } from '../src/types.js'
+import type { OctokitHelper } from '../src/octokitHelper.js'
+
+const actualDiff2html = await import('diff2html')
+const html = jest.fn(actualDiff2html.html)
+
+jest.unstable_mockModule('diff2html', () => ({
+  ...actualDiff2html,
+  html
+}))
+
+const {
   generateHtmlReport,
   getChecksOutput,
   reportToChecks,
@@ -6,13 +20,7 @@ import {
   reportToLabel,
   reportToPrBody,
   reportToPrComment
-} from '../src/reporter'
-import { DiffResult } from '../src/types'
-import { jest } from '@jest/globals'
-import { OctokitHelper } from '../src/octokitHelper'
-import * as github from '@actions/github'
-import * as Diff2html from 'diff2html'
-import fs from 'fs'
+} = await import('../src/reporter.js')
 
 describe('reporter.ts', () => {
   const octokitHelper: jest.Mocked<OctokitHelper> = {
@@ -31,10 +39,9 @@ describe('reporter.ts', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    jest.replaceProperty(github, 'context', {
-      issue: { number: 1 },
-      payload: { pull_request: { head: { sha: 'sha' } } }
-    } as never)
+    github.context.payload = {
+      pull_request: { number: 1, head: { sha: 'sha' } }
+    }
     process.env.GITHUB_REPOSITORY = 'owner/repo'
   })
 
@@ -333,7 +340,6 @@ ${'B'.repeat(65400)}
   })
 
   describe('generateHtmlReport', () => {
-    const html = jest.spyOn(Diff2html, 'html')
     const writeFileSync = jest.spyOn(fs, 'writeFileSync')
 
     it('empty', async () => {

@@ -1,17 +1,43 @@
-import {
-  calculateDiffResults,
-  cloneBaseRepository,
-  createTempDirs,
-  getGitUrl
-} from '../src/main'
 import { expect, jest } from '@jest/globals'
-import * as exec from '@actions/exec'
 import * as github from '@actions/github'
-import * as utils from '../src/utils.js'
-import * as io from '@actions/io'
-import * as gradle from '../src/gradle.js'
-import * as diff from '../src/diff.js'
-import { TempDirs } from '../src/types'
+import type * as exec from '@actions/exec'
+import type * as io from '@actions/io'
+import type * as utils from '../src/utils.js'
+import type * as gradle from '../src/gradle.js'
+import { TempDirs } from '../src/types.js'
+
+const mockExec = jest.fn<typeof exec.exec>()
+const mkdirP = jest.fn<typeof io.mkdirP>()
+const createTempDirectory = jest.fn<typeof utils.createTempDirectory>()
+const mockGenerateDependenciesFiles =
+  jest.fn<typeof gradle.generateDependenciesFiles>()
+
+const actualUtils = await import('../src/utils.js')
+const actualDiff = await import('../src/diff.js')
+const mockCalculateDiffResults =
+  jest.fn<typeof actualDiff.calculateDiffResults>()
+
+jest.unstable_mockModule('@actions/exec', () => ({
+  exec: mockExec,
+  getExecOutput: jest.fn()
+}))
+jest.unstable_mockModule('@actions/io', () => ({
+  mkdirP
+}))
+jest.unstable_mockModule('../src/utils.js', () => ({
+  ...actualUtils,
+  createTempDirectory
+}))
+jest.unstable_mockModule('../src/gradle.js', () => ({
+  generateDependenciesFiles: mockGenerateDependenciesFiles
+}))
+jest.unstable_mockModule('../src/diff.js', () => ({
+  ...actualDiff,
+  calculateDiffResults: mockCalculateDiffResults
+}))
+
+const { calculateDiffResults, cloneBaseRepository, createTempDirs, getGitUrl } =
+  await import('../src/main.js')
 
 describe('main.ts', () => {
   beforeEach(() => {
@@ -19,9 +45,6 @@ describe('main.ts', () => {
   })
 
   describe('createTempDirs', () => {
-    const createTempDirectory = jest.spyOn(utils, 'createTempDirectory')
-    const mkdirP = jest.spyOn(io, 'mkdirP')
-
     it('test', async () => {
       const tempDir = '/temp'
 
@@ -57,17 +80,15 @@ describe('main.ts', () => {
   })
 
   describe('cloneBaseRepository', () => {
-    const mockExec = jest.spyOn(exec, 'exec')
-
     it('test', async () => {
       const gitUrl =
         'https://x-access-token:token@github.com/example-org/example-repo'
       const baseRepoDir = 'baseRepoDir'
 
       mockExec.mockResolvedValue(0)
-      jest.replaceProperty(github, 'context', {
-        payload: { pull_request: { base: { ref: 'main' } } }
-      } as never)
+      github.context.payload = {
+        pull_request: { number: 1, base: { ref: 'main' } }
+      }
 
       await cloneBaseRepository(gitUrl, baseRepoDir)
 
@@ -90,12 +111,6 @@ describe('main.ts', () => {
   })
 
   describe('calculateDiffResults', () => {
-    const mockGenerateDependenciesFiles = jest.spyOn(
-      gradle,
-      'generateDependenciesFiles'
-    )
-    const mockCalculateDiffResults = jest.spyOn(diff, 'calculateDiffResults')
-
     it('test', async () => {
       const tempDirs: TempDirs = {
         root: '/temp',
