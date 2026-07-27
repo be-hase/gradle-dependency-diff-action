@@ -21,7 +21,6 @@ npm run lint                 # ESLint
 npm run format:write         # Prettier
 npm run bundle               # format + rollup bundle to dist/
 npm run all                  # format + lint + test + coverage badge + package
-npm run local-action         # Run locally via @github/local-action (.env)
 ```
 
 **Important: `dist/` is committed.** The action executes `dist/index.js`
