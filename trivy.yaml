@@ -1,0 +1,11 @@
+# Configuration for Trivy, run as part of super-linter.
+# https://trivy.dev/latest/docs/references/configuration/config-file/
+disable-telemetry: true
+exit-code: 1
+scan:
+  skip-dirs:
+    # dist/ is generated from src/, which is still scanned. The bundled
+    # third-party code trips the secret scanner: @azure/storage-blob ships
+    # the well-known public Azurite emulator account key, and the bundle
+    # also contains the literal `ghp_` token prefix used by getGitUrl().
+    - '**/dist'

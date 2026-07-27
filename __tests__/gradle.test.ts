@@ -1,6 +1,13 @@
 import { jest } from '@jest/globals'
-import * as exec from '@actions/exec'
-import { generateDependenciesFiles } from '../src/gradle'
+import type * as exec from '@actions/exec'
+
+const getExecOutput = jest.fn<typeof exec.getExecOutput>()
+
+jest.unstable_mockModule('@actions/exec', () => ({
+  getExecOutput
+}))
+
+const { generateDependenciesFiles } = await import('../src/gradle.js')
 
 describe('gradle.ts', () => {
   beforeEach(() => {
@@ -8,8 +15,6 @@ describe('gradle.ts', () => {
   })
 
   describe('generateDependenciesFiles', () => {
-    const getExecOutput = jest.spyOn(exec, 'getExecOutput')
-
     it('test', async () => {
       getExecOutput.mockResolvedValueOnce({} as exec.ExecOutput)
       await generateDependenciesFiles('configuration', 'cwd')

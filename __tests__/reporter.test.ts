@@ -1,18 +1,37 @@
-import {
+import { jest } from '@jest/globals'
+import * as github from '@actions/github'
+import fs from 'fs'
+import type * as glob from '@actions/glob'
+import type { DefaultArtifactClient } from '@actions/artifact'
+import { DiffResult } from '../src/types.js'
+import type { OctokitHelper } from '../src/octokitHelper.js'
+
+const actualDiff2html = await import('diff2html')
+const html = jest.fn(actualDiff2html.html)
+const globCreate = jest.fn<typeof glob.create>()
+const uploadArtifact = jest.fn<DefaultArtifactClient['uploadArtifact']>()
+
+jest.unstable_mockModule('diff2html', () => ({
+  ...actualDiff2html,
+  html
+}))
+jest.unstable_mockModule('@actions/glob', () => ({
+  create: globCreate
+}))
+jest.unstable_mockModule('@actions/artifact', () => ({
+  DefaultArtifactClient: jest.fn(() => ({ uploadArtifact }))
+}))
+
+const {
   generateHtmlReport,
   getChecksOutput,
+  reportToArtifact,
   reportToChecks,
   reportToCustomEndpoint,
   reportToLabel,
   reportToPrBody,
   reportToPrComment
-} from '../src/reporter'
-import { DiffResult } from '../src/types'
-import { jest } from '@jest/globals'
-import { OctokitHelper } from '../src/octokitHelper'
-import * as github from '@actions/github'
-import * as Diff2html from 'diff2html'
-import fs from 'fs'
+} = await import('../src/reporter.js')
 
 describe('reporter.ts', () => {
   const octokitHelper: jest.Mocked<OctokitHelper> = {
@@ -31,10 +50,9 @@ describe('reporter.ts', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    jest.replaceProperty(github, 'context', {
-      issue: { number: 1 },
-      payload: { pull_request: { head: { sha: 'sha' } } }
-    } as never)
+    github.context.payload = {
+      pull_request: { number: 1, head: { sha: 'sha' } }
+    }
     process.env.GITHUB_REPOSITORY = 'owner/repo'
   })
 
@@ -333,7 +351,6 @@ ${'B'.repeat(65400)}
   })
 
   describe('generateHtmlReport', () => {
-    const html = jest.spyOn(Diff2html, 'html')
     const writeFileSync = jest.spyOn(fs, 'writeFileSync')
 
     it('empty', async () => {
@@ -529,6 +546,33 @@ hogehoge
       await reportToPrBody(octokitHelper, ['url'], [])
 
       expect(octokitHelper.updatePullRequest).toHaveBeenCalledTimes(0)
+    })
+  })
+
+  describe('reportToArtifact', () => {
+    it('uploads txt reports and the html report', async () => {
+      const globber = {
+        glob: () =>
+          Promise.resolve([
+            '/temp/result/a/runtimeClasspath.txt',
+            '/temp/result/b/runtimeClasspath.txt'
+          ])
+      }
+      globCreate.mockResolvedValueOnce(globber as glob.Globber)
+      uploadArtifact.mockResolvedValueOnce({})
+
+      await reportToArtifact('/temp/result')
+
+      expect(globCreate).toHaveBeenCalledWith('/temp/result/**/*.txt')
+      expect(uploadArtifact).toHaveBeenCalledWith(
+        'gradle-dependency-diff-action-result',
+        [
+          '/temp/result/a/runtimeClasspath.txt',
+          '/temp/result/b/runtimeClasspath.txt',
+          '/temp/result/result.html'
+        ],
+        '/temp/result'
+      )
     })
   })
 

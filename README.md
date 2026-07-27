@@ -26,6 +26,18 @@
 
 ## Getting Start
 
+### Requirements
+
+- v2 (and later) runs on the Node 24 runtime, which requires
+  [GitHub Actions Runner v2.327.1 or later](https://github.com/actions/runner/releases/tag/v2.327.1).
+  GitHub-hosted runners already satisfy this. If you use self-hosted runners or
+  GitHub Enterprise Server, make sure your runner is up to date before
+  upgrading, since the floating `v2` tag picks up new releases automatically.
+- The floating `v1` tag will also move to the Node 24 runtime in a future
+  release. If your runner cannot be updated (e.g. older GitHub Enterprise
+  Server), pin to a release that still runs on Node 20 — currently `v1.1.3` — or
+  to a commit SHA, instead of a floating major tag.
+
 ### Apply `project-report` plugin
 
 Please apply the project-report plugin to the project where you want to obtain
@@ -56,7 +68,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - uses: be-hase/gradle-dependency-diff-action@v1
+      - uses: be-hase/gradle-dependency-diff-action@v2
 ```
 
 ## Report Samples
@@ -89,7 +101,7 @@ The HTML report generated in the actions artifact:
 ## FAQ
 
 <details>
-<summary>The error `Task 'dependencyReport' not found in root project 'xxx' and its subprojects` has occurred.</summary>
+<summary>Error: Task 'dependencyReport' not found in root project</summary>
 
 The project-report plugin may not be applied to the base branch of the Pull
 Request.

@@ -1,16 +1,31 @@
-import {
+import path from 'path'
+import { jest } from '@jest/globals'
+import fs from 'fs'
+import type * as glob from '@actions/glob'
+import type * as exec from '@actions/exec'
+import type * as io from '@actions/io'
+import { TempDirs } from '../src/types.js'
+
+const globCreate = jest.fn<typeof glob.create>()
+const getExecOutput = jest.fn<typeof exec.getExecOutput>()
+const mkdirP = jest.fn<typeof io.mkdirP>()
+
+jest.unstable_mockModule('@actions/glob', () => ({
+  create: globCreate
+}))
+jest.unstable_mockModule('@actions/exec', () => ({
+  getExecOutput
+}))
+jest.unstable_mockModule('@actions/io', () => ({
+  mkdirP
+}))
+
+const {
   calculateDiffResults,
   downloadJar,
   getProjectFromFile,
   sortDiffResults
-} from '../src/diff'
-import path from 'path'
-import { jest } from '@jest/globals'
-import fs from 'fs'
-import * as glob from '@actions/glob'
-import * as exec from '@actions/exec'
-import * as io from '@actions/io'
-import { TempDirs } from '../src/types'
+} = await import('../src/diff.js')
 
 describe('diff.ts', () => {
   beforeEach(() => {
@@ -75,12 +90,9 @@ describe('diff.ts', () => {
   })
 
   describe('calculateDiff', () => {
-    const globCreate = jest.spyOn(glob, 'create')
     const existsSync = jest.spyOn(fs, 'existsSync')
     const readFileSync = jest.spyOn(fs, 'readFileSync')
-    const getExecOutput = jest.spyOn(exec, 'getExecOutput')
     const writeFileSync = jest.spyOn(fs, 'writeFileSync')
-    const mkdirP = jest.spyOn(io, 'mkdirP')
 
     it('success', async () => {
       const jarPath = '/path/to/jar'
