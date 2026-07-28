@@ -12,9 +12,11 @@
  * snapshotted per test and fully restored afterwards, so the tests pass
  * regardless of any proxy configuration in the surrounding shell.
  *
- * Note: @actions/artifact@1 does not use undici at all (it goes through
- * @actions/http-client's classic node http/https agents), so the
- * override cannot affect the artifact upload path.
+ * Note: the artifact upload path (@actions/artifact@1) does not go
+ * through undici's fetch/dispatcher path — it uses @actions/http-client's
+ * classic node http/https agent path. undici is still loaded at module
+ * load as a dependency of @actions/http-client, but the override cannot
+ * affect artifact upload requests.
  */
 import * as http from 'node:http'
 import * as net from 'node:net'
