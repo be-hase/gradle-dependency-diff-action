@@ -26,6 +26,14 @@
 
 ## Getting Start
 
+### Requirements
+
+- Releases newer than `v1.1.3` run on the Node 24 runtime, which requires
+  [GitHub Actions Runner v2.327.1 or later](https://github.com/actions/runner/releases/tag/v2.327.1).
+  GitHub-hosted runners already satisfy this. If your runner cannot be updated
+  (e.g. older GitHub Enterprise Server), pin to `v1.1.3` (the last Node 20
+  release) or to a commit SHA, instead of the floating `v1` tag.
+
 ### Apply `project-report` plugin
 
 Please apply the project-report plugin to the project where you want to obtain

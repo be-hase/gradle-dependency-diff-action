@@ -1,0 +1,9 @@
+# brace-expansion: DoS via unbounded expansion length (transitive dependency).
+# The glob patterns passed to the affected code paths are hardcoded in this
+# action and never attacker-controlled. The only patched release (5.0.8)
+# changed its CommonJS export shape and is incompatible with the minimatch
+# majors pinned by upstream packages (eslint, jest, archiver), so overriding
+# would break them. Waiting for upstream bumps.
+# Review by 2026-10-31.
+CVE-2026-14257
+GHSA-mh99-v99m-4gvg

@@ -22,7 +22,7 @@
     ".": "./dist/index.js"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "scripts": {
     "bundle": "npm run format:write && npm run package",
@@ -31,7 +31,6 @@
     "format:write": "npx prettier --write .",
     "format:check": "npx prettier --check .",
     "lint": "npx eslint .",
-    "local-action": "npx local-action . src/main.ts .env",
     "package": "npx rollup --config rollup.config.ts --configPlugin @rollup/plugin-typescript",
     "package:watch": "npm run package -- --watch",
     "test": "npx jest",
@@ -49,14 +48,13 @@
   },
   "devDependencies": {
     "@eslint/compat": "^1.2.5",
-    "@github/local-action": "^2.5.0",
     "@jest/globals": "^29.7.0",
     "@rollup/plugin-commonjs": "^28.0.1",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.0",
     "@rollup/plugin-typescript": "^12.1.1",
     "@types/jest": "^29.5.14",
-    "@types/node": "^20.17.16",
+    "@types/node": "^24.10.9",
     "@typescript-eslint/eslint-plugin": "^8.22.0",
     "@typescript-eslint/parser": "^8.22.0",
     "eslint": "^9.19.0",
@@ -77,5 +75,8 @@
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "*"
+  },
+  "overrides": {
+    "undici": "^6.28.0"
   }
 }
